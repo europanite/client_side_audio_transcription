@@ -91,9 +91,11 @@ export function useTranscription(): UseTranscriptionResult {
         // 4) Run Whisper on the PCM data
         const result = await asr(channelData, {
           // Safer settings for reasonably long audio
-          chunk_length_s: 30,
+          chunk_length_s: 20,
           stride_length_s: 5
         });
+        
+        console.log(result);
 
         let text = "";
         if (typeof result === "string") {
