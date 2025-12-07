@@ -1,14 +1,18 @@
-// frontend/app/vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  base: "/client_side_audio_transcription/",
+
   plugins: [react()],
+
   build: {
-    target: "es2022"
+    target: "es2022",
+    sourcemap: true
   },
+
   optimizeDeps: {
-    // Pre-bundling this library is heavy; better to exclude it.
+    // transformers.js is too heavy to import first
     exclude: ["@huggingface/transformers"]
   }
 });
