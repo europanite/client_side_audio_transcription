@@ -5,7 +5,7 @@ const SettingsBar: React.FC = () => {
     <div className="settings-bar">
       <div className="settings-main">
         <div className="settings-label">Model</div>
-        <div className="settings-value">Xenova/whisper-tiny.en (Transformers.js, in-browser)</div>
+        <div className="settings-value">Xenova/whisper-tiny.en</div>
       </div>
     </div>
   );

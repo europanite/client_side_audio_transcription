@@ -11,11 +11,11 @@ const App: React.FC = () => {
           <div>
             <a href={REPO_URL} target="_blank" rel="noreferrer">
               <h1 className="app-title">
-                Client-side Audio Transcription
+                Client-Side Audio Transcription
               </h1>
             </a>
             <p className="app-subtitle">
-              A Browser-Based AI Audio Transcription Playground Powered by Whisper. No installation, registration, or payment required.
+              A Browser-Based AI Audio Transcription Playground Powered by Whisper. No installation, No registration, or No payment required.
             </p>
           </div>
           <SettingsBar />

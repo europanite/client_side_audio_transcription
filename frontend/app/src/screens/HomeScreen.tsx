@@ -86,7 +86,7 @@ const HomeScreen: React.FC = () => {
 
       {/* Step 2 */}
       <section className="section">
-        <h2 className="section-title">Step 2 – Model status</h2>
+        <h2 className="section-title">Step 2 - Model status</h2>
         <div className="status-row">
           {(status === "loading-model" || status === "transcribing") && (
             <span className="spinner" aria-hidden="true" />
@@ -98,7 +98,7 @@ const HomeScreen: React.FC = () => {
 
       {/* Step 3 */}
       <section className="section">
-        <h2 className="section-title">Step 3 – English transcription</h2>
+        <h2 className="section-title">Step 3 - English transcription</h2>
         <p className="section-description">
           The recognized English text will appear below. You can copy &amp;
           paste it into other tools.
@@ -129,8 +129,7 @@ const HomeScreen: React.FC = () => {
         </div>
 
         <p className="footer-note">
-          Note: The Whisper model runs entirely in your browser using
-          Transformers.js. Large files may take time and memory.
+          Note: The Whisper model runs entirely in your browser using Transformers.js. Large files may take time and memory.
         </p>
       </section>
     </main>
