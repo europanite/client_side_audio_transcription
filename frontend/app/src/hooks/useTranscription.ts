@@ -43,7 +43,7 @@ export function useTranscription(): UseTranscriptionResult {
         env.backends.onnx.wasm.numThreads = 1;
       }
 
-      // Load Whisper tiny (English) model.
+      // Load a Whisper model.
       const asr = await pipeline(
         "automatic-speech-recognition",
         "Xenova/whisper-tiny.en"

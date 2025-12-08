@@ -31,8 +31,8 @@ All speech-to-text runs **inside your browser** – no backend server and no aud
 - **MP3 / WAV support**  
   Drag & drop or select an `.mp3` (or `.wav`) file. Short, speech-focused clips work best for this demo.
 
-- **Whisper tiny (English)**  
-  Uses Xenova's `whisper-tiny.en` model via ONNX in Transformers.js, optimized for English speech and small enough to load comfortably in the browser.
+- **Whisper tiny**  
+  Uses Xenova's `whisper-tiny.en` model via ONNX in Transformers.js, optimized for speech and small enough to load comfortably in the browser.
 
 - **Modern tooling**  
   Built with React, TypeScript, and Vite, tested with Jest, containerized with Docker, and wired to GitHub Actions for CI, Docker-based tests, and GitHub Pages deployment.
@@ -56,7 +56,7 @@ All speech-to-text runs **inside your browser** – no backend server and no aud
 At a high level:
 
 1. **UI layer – `App.tsx` & `HomeScreen.tsx`**  
-   - `App.tsx` renders the header, GitHub link, and a short description (“Drop an mp3 file, run Whisper in your browser, and read the English transcript.”), plus the `SettingsBar` and `HomeScreen`.  
+   - `App.tsx` renders the header, GitHub link, and a short description (“Drop an mp3 file, run Whisper in your browser, and read the transcript.”), plus the `SettingsBar` and `HomeScreen`.  
    - `HomeScreen` implements a simple form:
      - Step 1: A button to load the model.
      - Step 2: A model status panel (idle / loading / ready / error).
@@ -85,7 +85,6 @@ At a high level:
 
 ## ⚠️ Notes & limitations
 
-- Whisper tiny is intentionally small: great for demos and short English clips, but less accurate than larger Whisper models.
 - Long audio files will be slower to process in the browser and may hit memory limits on low-end devices.
 - A modern desktop browser with WebAssembly support (e.g., recent Chrome / Edge / Firefox) is recommended.
 
