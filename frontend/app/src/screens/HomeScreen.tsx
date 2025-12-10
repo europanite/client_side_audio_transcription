@@ -1,15 +1,17 @@
 // frontend/app/src/screens/HomeScreen.tsx
-import React, { ChangeEvent, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranscription } from "../hooks/useTranscription";
 
-const HomeScreen: React.FC = () => {
+const HomeScreen = () => {
   const { status, error, transcript, transcribeFile, reset } =
     useTranscription();
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileChange = async (event: unknown) => {
+    // event は React.ChangeEvent<HTMLInputElement> だが、型は推論に任せる
+    const file = (event as any).target?.files?.[0] as File | undefined;
+
     if (!file) {
       setSelectedFileName("");
       return;
@@ -38,7 +40,7 @@ const HomeScreen: React.FC = () => {
       case "idle":
         return "Idle - waiting for an audio file.";
       case "loading-model":
-        return "Loading Whisper model into this browser (first load can be slow)...";
+        return "Loading Whisper model into this browser (first load can be slow).";
       case "ready":
         return "Model loaded. Ready to transcribe.";
       case "transcribing":
@@ -52,15 +54,15 @@ const HomeScreen: React.FC = () => {
     }
   })();
 
+  const hasClearableContent = Boolean(
+    transcript?.trim() || error || selectedFileName
+  );
+
   return (
     <main className="home">
       {/* Step 1 */}
       <section className="section">
         <h2 className="section-title">Step 1 - Select an audio file</h2>
-        <p className="section-description">
-          Choose an audio file
-        </p>
-
         <div className="button-row">
           <button
             type="button"
@@ -86,52 +88,48 @@ const HomeScreen: React.FC = () => {
 
       {/* Step 2 */}
       <section className="section">
-        <h2 className="section-title">Step 2 – Model status</h2>
+        <h2 className="section-title">Step 2 - Model status</h2>
         <div className="status-row">
           {(status === "loading-model" || status === "transcribing") && (
             <span className="spinner" aria-hidden="true" />
           )}
-          <span className="status-text">{statusLabel}</span>
+          <p className="status-text">{statusLabel}</p>
         </div>
-        {error && <p className="error-text">{error}</p>}
+        {error && (
+          <p className="error-text" role="alert">
+            {error}
+          </p>
+        )}
       </section>
 
       {/* Step 3 */}
       <section className="section">
-        <h2 className="section-title">Step 3 – English transcription</h2>
+        <h2 className="section-title">Step 3 - Transcription</h2>
         <p className="section-description">
-          The recognized English text will appear below. You can copy &amp;
-          paste it into other tools.
+          Once the model finishes running in your browser, the transcribed text
+          will appear below. You can copy it into your notes or another tool.
         </p>
 
-        <textarea
-          className="transcript-box"
-          value={transcript}
-          readOnly
-          placeholder={
-            status === "idle"
-              ? "The transcript will appear here after you select an audio file."
-              : transcript
-              ? ""
-              : "Transcription result is empty."
-          }
-        />
-
-        <div className="button-row right">
+        <div className="transcription-toolbar">
           <button
             type="button"
             className="btn secondary"
             onClick={handleClearClick}
-            disabled={!transcript && !error && !selectedFileName}
+            disabled={!hasClearableContent}
           >
             Clear
           </button>
         </div>
 
-        <p className="footer-note">
-          Note: The Whisper model runs entirely in your browser using
-          Transformers.js. Large files may take time and memory.
-        </p>
+        <div className="transcription-output">
+          {transcript ? (
+            <pre className="transcription-text">{transcript}</pre>
+          ) : (
+            <p className="muted-text">
+              No transcript yet. Upload an audio file to get started.
+            </p>
+          )}
+        </div>
       </section>
     </main>
   );
