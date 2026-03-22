@@ -10,6 +10,27 @@ export type TranscriptionStatus =
   | "done"
   | "error";
 
+const ASR_MODEL_ID = "Xenova/whisper-small";
+
+function mixToMono(audioBuffer: AudioBuffer): Float32Array {
+  const { length, numberOfChannels } = audioBuffer;
+
+  if (numberOfChannels <= 1) {
+    return audioBuffer.getChannelData(0);
+  }
+
+  const mono = new Float32Array(length);
+
+  for (let channel = 0; channel < numberOfChannels; channel += 1) {
+    const channelData = audioBuffer.getChannelData(channel);
+    for (let i = 0; i < length; i += 1) {
+      mono[i] += channelData[i] / numberOfChannels;
+    }
+  }
+
+  return mono;
+}
+
 export interface UseTranscriptionResult {
   status: TranscriptionStatus;
   error: string | null;
@@ -44,10 +65,7 @@ export function useTranscription(): UseTranscriptionResult {
       }
 
       // Load a Whisper model.
-      const asr = await pipeline(
-        "automatic-speech-recognition",
-        "Xenova/whisper-tiny.en"
-      );
+      const asr = await pipeline("automatic-speech-recognition", ASR_MODEL_ID);
 
       pipelineRef.current = asr;
       setStatus("ready");
@@ -85,8 +103,8 @@ export function useTranscription(): UseTranscriptionResult {
           arrayBuffer.slice(0)
         );
 
-        // 3) Take the first channel (mono)
-        const channelData = audioBuffer.getChannelData(0); // Float32Array
+        // 3) Mix all channels down to mono instead of fixing to channel 0
+        const channelData = mixToMono(audioBuffer);
 
         // 4) Run Whisper on the PCM data
         const result = await asr(channelData, {
