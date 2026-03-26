@@ -15,6 +15,20 @@ const createBaseHookValue = (): MockUseTranscriptionReturn => ({
   status: "idle",
   error: null,
   transcript: "",
+  availableModels: [
+    {
+      id: "Xenova/whisper-small",
+      label: "Small",
+      description: "Best accuracy here, but takes more browser memory.",
+    },
+    {
+      id: "Xenova/whisper-base",
+      label: "Base",
+      description: "Balanced speed and accuracy for Japanese transcription.",
+    },
+  ],
+  selectedModelId: "Xenova/whisper-small",
+  setSelectedModelId: jest.fn(),
   transcribeFile: jest.fn(),
   reset: jest.fn(),
 });
@@ -31,9 +45,8 @@ describe("HomeScreen", () => {
   it("renders the 3 main steps", () => {
     render(<HomeScreen />);
 
-    // These labels are aligned with the current HomeScreen.tsx implementation
     expect(
-      screen.queryByText("Step 1 - Select an audio file")
+      screen.queryByText("Step 1 - Choose a model and audio file")
     ).not.toBeNull();
     expect(
       screen.queryByText("Step 2 - Model status")
@@ -43,10 +56,26 @@ describe("HomeScreen", () => {
     ).not.toBeNull();
   });
 
+  it("calls setSelectedModelId when a model is selected", () => {
+    const setSelectedModelId = jest.fn();
+
+    (useTranscription as jest.Mock).mockReturnValue({
+      ...createBaseHookValue(),
+      setSelectedModelId,
+    });
+
+    render(<HomeScreen />);
+
+    fireEvent.change(screen.getByLabelText("Whisper model"), {
+      target: { value: "Xenova/whisper-base" },
+    });
+
+    expect(setSelectedModelId).toHaveBeenCalledWith("Xenova/whisper-base");
+  });
+
   it("calls transcribeFile when a file is selected", async () => {
     const transcribeFile = jest.fn().mockResolvedValue(undefined);
 
-    // Override the default mock with a version that exposes our spy
     (useTranscription as jest.Mock).mockReturnValue({
       ...createBaseHookValue(),
       transcribeFile,
@@ -71,7 +100,6 @@ describe("HomeScreen", () => {
       expect(transcribeFile).toHaveBeenCalledWith(file);
     });
 
-    // File name should be visible in the UI
     expect(screen.queryByText("sample.mp3")).not.toBeNull();
   });
 

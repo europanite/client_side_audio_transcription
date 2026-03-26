@@ -1,11 +1,26 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranscription } from "../hooks/useTranscription";
 
 const HomeScreen = () => {
-  const { status, error, transcript, transcribeFile, reset } =
-    useTranscription();
+  const {
+    status,
+    error,
+    transcript,
+    availableModels,
+    selectedModelId,
+    setSelectedModelId,
+    transcribeFile,
+    reset,
+  } = useTranscription();
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedModel = useMemo(
+    () =>
+      availableModels.find((model) => model.id === selectedModelId) ??
+      availableModels[0],
+    [availableModels, selectedModelId]
+  );
 
   const handleFileChange = async (event: unknown) => {
     const file = (event as any).target?.files?.[0] as File | undefined;
@@ -36,13 +51,13 @@ const HomeScreen = () => {
   const statusLabel = (() => {
     switch (status) {
       case "idle":
-        return "Idle - waiting for an audio file.";
+        return "Idle - choose a model and an audio file.";
       case "loading-model":
-        return "Loading Whisper model into this browser (first load can be slow)...";
+        return `Loading ${selectedModel.label} Whisper into this browser (first load can be slow)...`;
       case "ready":
-        return "Model loaded. Ready to transcribe.";
+        return `${selectedModel.label} model loaded. Ready to transcribe.`;
       case "transcribing":
-        return "Transcribing audio locally in your browser...";
+        return "Transcribing audio locally in your browser with automatic language detection...";
       case "done":
         return "Transcription finished.";
       case "error":
@@ -56,7 +71,32 @@ const HomeScreen = () => {
     <main className="home">
       {/* Step 1 */}
       <section className="section">
-        <h2 className="section-title">Step 1 - Select an audio file</h2>
+        <h2 className="section-title">Step 1 - Choose a model and audio file</h2>
+        <p className="section-description">
+          Pick a multilingual Whisper model, then select your audio file.
+          Whisper will automatically detect whether the MP3 is Japanese or English.
+        </p>
+
+        <div className="field-group">
+          <label className="field-label" htmlFor="whisper-model-select">
+            Whisper model
+          </label>
+          <select
+            id="whisper-model-select"
+            className="select-input"
+            value={selectedModelId}
+            onChange={(event) => setSelectedModelId(event.target.value)}
+            disabled={isBusy}
+          >
+            {availableModels.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.label} - {model.id}
+              </option>
+            ))}
+          </select>
+          <p className="helper-text">{selectedModel.description}</p>
+        </div>
+
         <div className="button-row">
           <button
             type="button"
@@ -124,7 +164,8 @@ const HomeScreen = () => {
         </div>
 
         <p className="footer-note">
-          Note: The Whisper model runs entirely in your browser using Transformers.js. Large files may take time and memory.
+          Note: The selected Whisper model runs entirely in your browser using
+          Transformers.js. Larger models may take more time and memory.
         </p>
       </section>
     </main>

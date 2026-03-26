@@ -1,5 +1,8 @@
 import { renderHook, act } from "@testing-library/react";
-import { useTranscription } from "../hooks/useTranscription";
+import {
+  DEFAULT_WHISPER_MODEL_ID,
+  useTranscription,
+} from "../hooks/useTranscription";
 
 jest.mock("@huggingface/transformers", () => ({
   env: {},
@@ -13,6 +16,9 @@ describe("useTranscription hook", () => {
     expect(result.current.status).toBe("idle");
     expect(result.current.error).toBeNull();
     expect(result.current.transcript).toBe("");
+    expect(result.current.selectedModelId).toBe(DEFAULT_WHISPER_MODEL_ID);
+    expect(result.current.availableModels.length).toBeGreaterThan(0);
+    expect(typeof result.current.setSelectedModelId).toBe("function");
     expect(typeof result.current.transcribeFile).toBe("function");
     expect(typeof result.current.reset).toBe("function");
   });
@@ -27,5 +33,6 @@ describe("useTranscription hook", () => {
     expect(result.current.status).toBe("idle");
     expect(result.current.error).toBeNull();
     expect(result.current.transcript).toBe("");
+    expect(result.current.selectedModelId).toBe(DEFAULT_WHISPER_MODEL_ID);
   });
 });
