@@ -46,7 +46,7 @@ describe("HomeScreen", () => {
     render(<HomeScreen />);
 
     expect(
-      screen.queryByText("Step 1 - Choose a model and audio file")
+      screen.queryByText("Step 1 - Choose a model and media file")
     ).not.toBeNull();
     expect(
       screen.queryByText("Step 2 - Model status")
@@ -73,6 +73,19 @@ describe("HomeScreen", () => {
     expect(setSelectedModelId).toHaveBeenCalledWith("Xenova/whisper-base");
   });
 
+
+  it("accepts video formats in the hidden file input", () => {
+    const { container } = render(<HomeScreen />);
+
+    const fileInput = container.querySelector(
+      "input[type=\"file\"]"
+    ) as HTMLInputElement;
+
+    expect(fileInput.accept).toBe(
+      "audio/*,video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv,.m4v"
+    );
+  });
+
   it("calls transcribeFile when a file is selected", async () => {
     const transcribeFile = jest.fn().mockResolvedValue(undefined);
 
@@ -87,8 +100,8 @@ describe("HomeScreen", () => {
       'input[type="file"]'
     ) as HTMLInputElement;
 
-    const file = new File(["dummy"], "sample.mp3", {
-      type: "audio/mpeg",
+    const file = new File(["dummy"], "sample.mp4", {
+      type: "video/mp4",
     });
 
     fireEvent.change(fileInput, {
@@ -100,7 +113,7 @@ describe("HomeScreen", () => {
       expect(transcribeFile).toHaveBeenCalledWith(file);
     });
 
-    expect(screen.queryByText("sample.mp3")).not.toBeNull();
+    expect(screen.queryByText("sample.mp4")).not.toBeNull();
   });
 
   it("disables the Clear button when there is no transcript, error, or file", () => {

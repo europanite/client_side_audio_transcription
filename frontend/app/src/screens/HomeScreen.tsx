@@ -71,10 +71,10 @@ const HomeScreen = () => {
     <main className="home">
       {/* Step 1 */}
       <section className="section">
-        <h2 className="section-title">Step 1 - Choose a model and audio file</h2>
+        <h2 className="section-title">Step 1 - Choose a model and media file</h2>
         <p className="section-description">
-          Pick a multilingual Whisper model, then select your audio file.
-          Whisper will automatically detect whether the MP3 is Japanese or English.
+          Pick a multilingual Whisper model, then select your audio or video file.
+          Whisper will automatically detect speech from supported media such as MP3 or MP4 in your browser.
         </p>
 
         <div className="field-group">
@@ -104,7 +104,7 @@ const HomeScreen = () => {
             onClick={handleChooseFileClick}
             disabled={isBusy}
           >
-            {isBusy ? "Processing..." : "Choose an audio file"}
+            {isBusy ? "Processing..." : "Choose a media file"}
           </button>
           <span className="file-name">
             {selectedFileName || "No file selected yet."}
@@ -114,7 +114,7 @@ const HomeScreen = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept="audio/mpeg,audio/mp3"
+          accept="audio/*,video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv,.m4v"
           style={{ display: "none" }}
           onChange={handleFileChange}
         />
@@ -145,7 +145,7 @@ const HomeScreen = () => {
           readOnly
           placeholder={
             status === "idle"
-              ? "The transcript will appear here after you select an audio file."
+              ? "The transcript will appear here after you select a media file."
               : transcript
               ? ""
               : "Transcription result is empty."
