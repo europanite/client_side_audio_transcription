@@ -143,14 +143,6 @@ The UI text says users can select audio or video files and that Whisper can dete
 
 However, the actual implementation decodes the selected file using `AudioContext.decodeAudioData()`. In practice, successful decoding depends on browser codec support. That means supported behavior is ultimately constrained by what the user’s browser can decode from the selected media file.
 
-
----
-
-## ⚠️ Notes & limitations
-
-- Long audio files will be slower to process in the browser and may hit memory limits on low-end devices.
-- A modern desktop browser with WebAssembly support (e.g., recent Chrome / Edge / Firefox) is recommended.
-
 ---
 
 ## 🚀 Getting Started
