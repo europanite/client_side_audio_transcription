@@ -10,4 +10,4 @@ services:
       - /app/node_modules
       - ./reports/frontend:/reports/frontend
     command: >-
-      sh -lc "npm ci && npm test -- --ci --runInBand --verbose"
+      sh -lc "mkdir -p /reports/frontend && printf 'Jest docker test reports\n' > /reports/frontend/README.txt && npm ci && npm test -- --ci --runInBand --coverage --verbose --coverageDirectory=/reports/frontend/coverage --json --outputFile=/reports/frontend/jest-results.json"
