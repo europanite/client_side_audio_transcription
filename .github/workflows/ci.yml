@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [18, 20, 22]
+        node: [18, 20, 22, 24]
     env:
       CI: "1"
       EXPO_TUNNEL: "false"
@@ -23,7 +23,7 @@ jobs:
       EXPO_PUBLIC_API_BASE: http://localhost:8000
     steps:
       - name: Checkout
-        uses: actions/checkout@v
+        uses: actions/checkout@v5
       - name: Use Node ${{ matrix.node }}
         uses: actions/setup-node@v5
         with:
@@ -58,10 +58,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Use Node 20
+      - name: Use Node 24
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: frontend/app/package-lock.json
       - name: Install deps
