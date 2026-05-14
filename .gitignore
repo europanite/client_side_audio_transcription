@@ -18,6 +18,7 @@ desktop.ini
 *.tar
 
 # coverage reports
+reports/
 coverage/
 frontend/app/coverage/
 
