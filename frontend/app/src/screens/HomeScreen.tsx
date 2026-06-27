@@ -74,7 +74,7 @@ const HomeScreen = () => {
         <h2 className="section-title">Step 1 - Choose a model and media file</h2>
         <p className="section-description">
           Pick a multilingual Whisper model, then select your audio or video file.
-          Whisper will automatically detect speech from supported media such as MP3 or MP4 in your browser.
+          Whisper will automatically detect speech from supported media such as MP3, MP4, WebM, or browser-decodable MKV in your browser.
         </p>
 
         <div className="field-group">
@@ -114,7 +114,7 @@ const HomeScreen = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept="audio/*,video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv,.m4v"
+          accept="audio/*,video/mp4,video/webm,video/ogg,video/x-matroska,video/matroska,.mp4,.webm,.ogv,.m4v,.mkv"
           style={{ display: "none" }}
           onChange={handleFileChange}
         />
