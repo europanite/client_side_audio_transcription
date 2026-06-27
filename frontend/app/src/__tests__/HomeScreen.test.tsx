@@ -82,7 +82,7 @@ describe("HomeScreen", () => {
     ) as HTMLInputElement;
 
     expect(fileInput.accept).toBe(
-      "audio/*,video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv,.m4v"
+      "audio/*,video/mp4,video/webm,video/ogg,video/x-matroska,video/matroska,.mp4,.webm,.ogv,.m4v,.mkv"
     );
   });
 

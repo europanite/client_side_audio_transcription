@@ -139,15 +139,34 @@ export function useTranscription(): UseTranscriptionResult {
         const asr = await loadModel(selectedModelIdState);
         setStatus("transcribing");
 
-        // --- Decode MP3 -> mono Float32Array on the client ---
+        // --- Decode browser-supported audio/video -> mono Float32Array on the client ---
         // 1) Read file as ArrayBuffer
         const arrayBuffer = await file.arrayBuffer();
 
         // 2) Decode and (effectively) resample to 16 kHz
         const audioContext = new AudioContext({ sampleRate: 16000 });
-        const audioBuffer = await audioContext.decodeAudioData(
-          arrayBuffer.slice(0)
-        );
+        let audioBuffer: AudioBuffer;
+
+        try {
+          audioBuffer = await audioContext.decodeAudioData(
+            arrayBuffer.slice(0)
+          );
+        } catch (decodeError) {
+          const isMkv =
+            file.name.toLowerCase().endsWith(".mkv") ||
+            file.type === "video/x-matroska" ||
+            file.type === "video/matroska";
+
+          if (isMkv) {
+            throw new Error(
+              "This browser could not decode the selected MKV file. " +
+                "MKV selection is allowed, but transcription still depends on the browser's built-in media decoder. " +
+                "Please try Chrome/Edge, or convert/extract the audio to MP3, WAV, M4A, MP4, or WebM."
+            );
+          }
+
+          throw decodeError;
+        }
 
         // 3) Mix all channels down to mono instead of fixing to channel 0
         const channelData = mixToMono(audioBuffer);
