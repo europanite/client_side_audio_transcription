@@ -1,5 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import {
+  DEFAULT_TRANSCRIPTION_LANGUAGE_ID,
   DEFAULT_WHISPER_MODEL_ID,
   useTranscription,
 } from "../hooks/useTranscription";
@@ -19,6 +20,11 @@ describe("useTranscription hook", () => {
     expect(result.current.selectedModelId).toBe(DEFAULT_WHISPER_MODEL_ID);
     expect(result.current.availableModels.length).toBeGreaterThan(0);
     expect(typeof result.current.setSelectedModelId).toBe("function");
+    expect(result.current.selectedLanguageId).toBe(
+      DEFAULT_TRANSCRIPTION_LANGUAGE_ID
+    );
+    expect(result.current.availableLanguages.length).toBeGreaterThan(0);
+    expect(typeof result.current.setSelectedLanguageId).toBe("function");
     expect(typeof result.current.transcribeFile).toBe("function");
     expect(typeof result.current.reset).toBe("function");
   });
@@ -34,5 +40,8 @@ describe("useTranscription hook", () => {
     expect(result.current.error).toBeNull();
     expect(result.current.transcript).toBe("");
     expect(result.current.selectedModelId).toBe(DEFAULT_WHISPER_MODEL_ID);
+    expect(result.current.selectedLanguageId).toBe(
+      DEFAULT_TRANSCRIPTION_LANGUAGE_ID
+    );
   });
 });

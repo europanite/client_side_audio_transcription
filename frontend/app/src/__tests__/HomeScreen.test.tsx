@@ -29,6 +29,27 @@ const createBaseHookValue = (): MockUseTranscriptionReturn => ({
   ],
   selectedModelId: "Xenova/whisper-small",
   setSelectedModelId: jest.fn(),
+  availableLanguages: [
+    {
+      id: "auto",
+      label: "Auto-detect",
+      description: "Let Whisper detect the spoken language automatically.",
+    },
+    {
+      id: "english",
+      label: "English",
+      description: "Force English transcription.",
+      whisperLanguage: "english",
+    },
+    {
+      id: "japanese",
+      label: "Japanese",
+      description: "Force Japanese transcription.",
+      whisperLanguage: "japanese",
+    },
+  ],
+  selectedLanguageId: "english",
+  setSelectedLanguageId: jest.fn(),
   transcribeFile: jest.fn(),
   reset: jest.fn(),
 });
@@ -71,6 +92,23 @@ describe("HomeScreen", () => {
     });
 
     expect(setSelectedModelId).toHaveBeenCalledWith("Xenova/whisper-base");
+  });
+
+  it("calls setSelectedLanguageId when a language is selected", () => {
+    const setSelectedLanguageId = jest.fn();
+
+    (useTranscription as jest.Mock).mockReturnValue({
+      ...createBaseHookValue(),
+      setSelectedLanguageId,
+    });
+
+    render(<HomeScreen />);
+
+    fireEvent.change(screen.getByLabelText("Transcription language"), {
+      target: { value: "japanese" },
+    });
+
+    expect(setSelectedLanguageId).toHaveBeenCalledWith("japanese");
   });
 
 
