@@ -9,6 +9,9 @@ const HomeScreen = () => {
     availableModels,
     selectedModelId,
     setSelectedModelId,
+    availableLanguages,
+    selectedLanguageId,
+    setSelectedLanguageId,
     transcribeFile,
     reset,
   } = useTranscription();
@@ -20,6 +23,13 @@ const HomeScreen = () => {
       availableModels.find((model) => model.id === selectedModelId) ??
       availableModels[0],
     [availableModels, selectedModelId]
+  );
+
+  const selectedLanguage = useMemo(
+    () =>
+      availableLanguages.find((language) => language.id === selectedLanguageId) ??
+      availableLanguages[0],
+    [availableLanguages, selectedLanguageId]
   );
 
   const handleFileChange = async (event: unknown) => {
@@ -57,7 +67,9 @@ const HomeScreen = () => {
       case "ready":
         return `${selectedModel.label} model loaded. Ready to transcribe.`;
       case "transcribing":
-        return "Transcribing audio locally in your browser with automatic language detection...";
+        return selectedLanguageId === "auto"
+          ? "Transcribing audio locally in your browser with automatic language detection..."
+          : `Transcribing audio locally in your browser as ${selectedLanguage.label}...`;
       case "done":
         return "Transcription finished.";
       case "error":
@@ -95,6 +107,26 @@ const HomeScreen = () => {
             ))}
           </select>
           <p className="helper-text">{selectedModel.description}</p>
+        </div>
+
+        <div className="field-group">
+          <label className="field-label" htmlFor="transcription-language-select">
+            Transcription language
+          </label>
+          <select
+            id="transcription-language-select"
+            className="select-input"
+            value={selectedLanguageId}
+            onChange={(event) => setSelectedLanguageId(event.target.value)}
+            disabled={isBusy}
+          >
+            {availableLanguages.map((language) => (
+              <option key={language.id} value={language.id}>
+                {language.label}
+              </option>
+            ))}
+          </select>
+          <p className="helper-text">{selectedLanguage.description}</p>
         </div>
 
         <div className="button-row">
