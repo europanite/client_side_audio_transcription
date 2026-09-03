@@ -2,11 +2,137 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Client-Side Audio Transcription</title>
+    <title>Client-Side Audio Transcription | Whisper in Your Browser</title>
+    <meta
+      name="description"
+      content="Transcribe audio and video locally in your browser with Whisper and Transformers.js. No installation, registration, upload, or payment required."
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index,follow" />
+
+    <link
+      rel="canonical"
+      href="https://europanite.github.io/client_side_audio_transcription/"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Client-Side Audio Transcription | Whisper in Your Browser"
+    />
+    <meta
+      property="og:description"
+      content="A browser-based AI transcription playground powered by Whisper and Transformers.js. Media stays on your device."
+    />
+    <meta
+      property="og:url"
+      content="https://europanite.github.io/client_side_audio_transcription/"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Client-Side Audio Transcription",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Web Browser",
+        "url": "https://europanite.github.io/client_side_audio_transcription/",
+        "codeRepository": "https://github.com/europanite/client_side_audio_transcription",
+        "description": "A browser-based AI transcription playground powered by Whisper and Transformers.js. Audio and video are processed locally in the browser."
+      }
+    </script>
   </head>
+
   <body>
-    <div id="root"></div>
+    <!--
+      Pre-rendered first response for crawlers and users before React starts.
+      React replaces the contents of #root once the application bundle loads.
+    -->
+    <div id="root">
+      <div class="app-root">
+        <div class="app-shell">
+          <header class="app-header">
+            <div>
+              <a
+                href="https://github.com/europanite/client_side_audio_transcription"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <h1 class="app-title">Client-Side Audio Transcription</h1>
+              </a>
+              <p class="app-subtitle">
+                A Browser-Based AI Audio Transcription Playground Powered by
+                Whisper. No installation, registration, or payment required.
+              </p>
+            </div>
+
+            <div class="settings-bar">
+              <div class="settings-main">
+                <div class="settings-label">Runtime</div>
+                <div class="settings-value">Transformers.js + Whisper</div>
+              </div>
+            </div>
+          </header>
+
+          <main class="home">
+            <section class="section">
+              <h2 class="section-title">
+                Step 1 - Choose a model and media file
+              </h2>
+              <p class="section-description">
+                Pick a multilingual Whisper model, then select an audio or video
+                file. Supported media is processed locally in your browser
+                instead of being uploaded to a transcription backend.
+              </p>
+
+              <p>
+                Available Whisper models include Tiny, Base, and Small. The app
+                supports automatic language detection as well as explicit
+                language selection.
+              </p>
+            </section>
+
+            <section class="section">
+              <h2 class="section-title">Step 2 - Model status</h2>
+              <p class="section-description">
+                The selected Whisper model is loaded in the browser through
+                Transformers.js. The interface reports loading, readiness,
+                transcription, completion, and error states.
+              </p>
+            </section>
+
+            <section class="section">
+              <h2 class="section-title">Step 3 - Transcription</h2>
+              <p class="section-description">
+                The recognized text appears in the browser after transcription
+                finishes. Audio decoding, model inference, and transcription run
+                on the client.
+              </p>
+
+              <p class="footer-note">
+                Client-Side Audio Transcription is an open-source React,
+                TypeScript, and Vite project using Whisper with
+                Transformers.js.
+              </p>
+
+              <p>
+                <a
+                  href="https://github.com/europanite/client_side_audio_transcription"
+                >
+                  View the source code and documentation on GitHub
+                </a>
+              </p>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <noscript>
+      This application requires JavaScript to run the interactive transcription
+      interface.
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
