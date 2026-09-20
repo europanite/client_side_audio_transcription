@@ -1,7 +1,7 @@
 // frontend/app/src/hooks/useTranscription.ts
 import { useCallback, useEffect, useRef, useState } from "react";
 import { env, pipeline } from "@huggingface/transformers";
-import StreamTranscriptionWorker from "../workers/streamTranscription.worker?worker";
+import streamTranscriptionWorkerUrl from "../workers/streamTranscription.worker?worker&url";
 
 export type TranscriptionStatus =
   | "idle"
@@ -368,7 +368,9 @@ export function useTranscription(): UseTranscriptionResult {
 
   const getStreamWorker = useCallback(() => {
     if (!streamWorkerRef.current) {
-      streamWorkerRef.current = new StreamTranscriptionWorker();
+      streamWorkerRef.current = new Worker(streamTranscriptionWorkerUrl, {
+        type: "module",
+      });
     }
     return streamWorkerRef.current;
   }, []);
@@ -419,7 +421,10 @@ export function useTranscription(): UseTranscriptionResult {
           }
         };
         const handleError = (event: ErrorEvent) => {
-          fail(event.message || "Whisper worker failed to start.");
+          const location = event.filename
+            ? ` (${event.filename}:${event.lineno}:${event.colno})`
+            : ` (${streamTranscriptionWorkerUrl})`;
+          fail(`${event.message || "Whisper worker failed to start."}${location}`);
         };
         const handleMessageError = () => {
           fail("Whisper worker communication failed.");
