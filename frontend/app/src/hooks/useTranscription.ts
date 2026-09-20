@@ -1,7 +1,7 @@
 // frontend/app/src/hooks/useTranscription.ts
 import { useCallback, useEffect, useRef, useState } from "react";
 import { env, pipeline } from "@huggingface/transformers";
-import streamTranscriptionWorkerUrl from "../workers/streamTranscription.worker?worker&url";
+import { createStreamTranscriptionWorker } from "../workers/createStreamTranscriptionWorker";
 
 export type TranscriptionStatus =
   | "idle"
@@ -268,7 +268,6 @@ function buildAsrOptions(languageId: string, chunked: boolean) {
 type StreamCaptureNode = AudioWorkletNode | ScriptProcessorNode;
 
 type StreamWorkerMessage =
-  | { type: "worker-bootstrap-error"; error: string }
   | { type: "model-ready"; requestId: number; modelId: string }
   | { type: "model-error"; requestId: number; modelId: string; error: string }
   | { type: "transcript"; sessionId: number; chunkId: number; text: string }
@@ -369,45 +368,7 @@ export function useTranscription(): UseTranscriptionResult {
 
   const getStreamWorker = useCallback(() => {
     if (!streamWorkerRef.current) {
-      const workerModuleUrl = new URL(
-        streamTranscriptionWorkerUrl,
-        window.location.href
-      ).href;
-      const bootstrapSource = `
-const targetUrl = ${JSON.stringify(workerModuleUrl)};
-const pendingMessages = [];
-const bufferMessage = (event) => pendingMessages.push(event.data);
-self.onmessage = bufferMessage;
-
-import(targetUrl)
-  .then(() => {
-    const targetHandler = self.onmessage;
-    if (typeof targetHandler !== "function" || targetHandler === bufferMessage) {
-      throw new Error("Worker module loaded but did not install a message handler.");
-    }
-    for (const data of pendingMessages) {
-      targetHandler(new MessageEvent("message", { data }));
-    }
-  })
-  .catch((error) => {
-    const detail =
-      error instanceof Error
-        ? [error.name, error.message, error.stack].filter(Boolean).join(": ")
-        : String(error);
-    self.postMessage({
-      type: "worker-bootstrap-error",
-      error: \`Worker module import failed: \${detail} (\${targetUrl})\`,
-    });
-  });
-`;
-      const bootstrapUrl = URL.createObjectURL(
-        new Blob([bootstrapSource], { type: "text/javascript" })
-      );
-      const worker = new Worker(bootstrapUrl, { type: "module" });
-      const releaseBootstrapUrl = () => URL.revokeObjectURL(bootstrapUrl);
-      worker.addEventListener("message", releaseBootstrapUrl, { once: true });
-      worker.addEventListener("error", releaseBootstrapUrl, { once: true });
-      streamWorkerRef.current = worker;
+      streamWorkerRef.current = createStreamTranscriptionWorker();
     }
     return streamWorkerRef.current;
   }, []);
@@ -442,10 +403,6 @@ import(targetUrl)
         };
         const handleMessage = (event: MessageEvent<StreamWorkerMessage>) => {
           const message = event.data;
-          if (message.type === "worker-bootstrap-error") {
-            fail(message.error);
-            return;
-          }
           if (
             (message.type !== "model-ready" && message.type !== "model-error") ||
             message.requestId !== requestId
@@ -464,7 +421,7 @@ import(targetUrl)
         const handleError = (event: ErrorEvent) => {
           const location = event.filename
             ? ` (${event.filename}:${event.lineno}:${event.colno})`
-            : ` (${streamTranscriptionWorkerUrl})`;
+            : "";
           fail(`${event.message || "Whisper worker failed to start."}${location}`);
         };
         const handleMessageError = () => {
