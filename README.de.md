@@ -22,21 +22,23 @@
   <a href="./README.fr.md">🇫🇷 Français</a>
 </p>
 
+> **Hinweis zur Übersetzung:** Diese README ist eine übersetzte Version von [`README.md`](./README.md). Bei Abweichungen ist die englische Version maßgeblich.
+
 !["web_ui"](./assets/images/web_ui.png)
 
  [PlayGround](https://europanite.github.io/client_side_audio_transcription/)
 
-Eine browserbasierte KI-Transkriptionsumgebung auf Basis von Whisper und Transformers.js.
+Ein browserbasierter KI-Transkriptions-Playground mit Whisper und Transformers.js.
 Keine Installation, Registrierung oder Zahlung erforderlich.
 
 ---
 
 ## 🚀 Überblick
 
-Dieses Projekt ist eine clientseitige Web-App für Transkription, die mit React, TypeScript und Vite erstellt wurde.
-Whisper läuft über `@huggingface/transformers` direkt im Browser. Mediendateien werden daher lokal verarbeitet, anstatt zur Transkription an ein Backend hochgeladen zu werden.
+Dieses Projekt ist eine clientseitige Web-App zur Transkription, die mit React, TypeScript und Vite erstellt wurde.
+Whisper wird über `@huggingface/transformers` direkt im Browser ausgeführt, sodass Mediendateien lokal verarbeitet werden, anstatt zur Transkription auf ein Backend hochgeladen zu werden.
 
-Die aktuelle Implementierung unterstützt die Auswahl eines Whisper-Modells in der Benutzeroberfläche, die Auswahl einer lokalen Mediendatei, das bedarfsgesteuerte Laden des ausgewählten Modells und die Anzeige des erkannten Textes in einem schreibgeschützten Transkriptionsbereich.
+Die aktuelle Implementierung unterstützt die Auswahl eines Whisper-Modells in der UI, die Transkription lokaler Mediendateien, das Live-Streaming von Mikrofoneingaben, das bedarfsgesteuerte Laden des ausgewählten Modells und die Anzeige des erkannten Textes in einem schreibgeschützten Transkriptbereich.
 
 ## ✨ Funktionen
 
@@ -44,20 +46,28 @@ Die aktuelle Implementierung unterstützt die Auswahl eines Whisper-Modells in d
   Die React-App ruft die Pipeline `automatic-speech-recognition` aus `@huggingface/transformers` direkt im Browser auf, sodass die Transkription vollständig auf dem Client ausgeführt wird.
 
 - **Einfacher Workflow in 3 Schritten**  
-  Die Benutzeroberfläche führt durch folgende Schritte:
-  1. Das Whisper-Modell laden.
-  2. Den Modellstatus prüfen.
-  3. Audio hochladen und die Transkription starten; für jeden Schritt werden klare Statusmeldungen angezeigt.
+  Die UI führt durch folgende Schritte:
+  1. Whisper-Modell laden.
+  2. Modellstatus prüfen.
+  3. Audio hochladen und die Transkription ausführen; für jeden Schritt werden klare Statusmeldungen angezeigt.
+
+- **Live-Streaming-Transkription über das Mikrofon**  
+  Die App kann Mikrofon-Audio direkt im Browser erfassen und kontinuierlich transkribieren, ohne das Audio auf einen Server hochzuladen.
+  - Live-PCM-Audio wird mit der Web Audio API erfasst
+  - Audio wird vor der Whisper-Inferenz in kurzen Zeitfenstern gepuffert
+  - Die Streaming-Inferenz von Whisper läuft in einem Web Worker, damit die UI reaktionsfähig bleibt
+  - Eine Live-Mikrofonpegelanzeige zeigt, ob tatsächlich Audio empfangen wird
+  - `Stop microphone` beendet die Aufnahme sofort, während verbleibendes gepuffertes Audio asynchron abgeschlossen wird
 
 - **Transkription im Browser** mit `@huggingface/transformers`
-- **Auswahl mehrsprachiger Whisper-Modelle** in der Benutzeroberfläche
+- **Auswahl mehrsprachiger Whisper-Modelle** in der UI
 - Unterstützte integrierte Modelloptionen:
   - `Xenova/whisper-tiny`
   - `Xenova/whisper-base`
   - `Xenova/whisper-small`
 
 - Clientseitige Audiodekodierung auf 16 kHz über `AudioContext`
-- Mischen von Stereo zu Mono vor der Inferenz
+- Stereo-zu-Mono-Mischung vor der Inferenz
 - Einstellungen für segmentierte Transkription längerer Medien:
   - `chunk_length_s: 20`
   - `stride_length_s: 5`
@@ -74,7 +84,7 @@ Die aktuelle Implementierung unterstützt die Auswahl eines Whisper-Modells in d
 
 ---
 
-## 🧱 Technologie-Stack
+## 🧱 Tech-Stack
 
 - Frontend: React + TypeScript + Vite
 - ML-Runtime: `@huggingface/transformers`
@@ -90,7 +100,7 @@ Die aktuelle Implementierung unterstützt die Auswahl eines Whisper-Modells in d
 
 ### 1. App-Layout
 
-`App.tsx` rendert die App-Shell, den Titel, den Untertitel, `SettingsBar` und `HomeScreen`.
+`App.tsx` rendert die App-Struktur, den Titel, den Untertitel, `SettingsBar` und `HomeScreen`.
 
 Die Einstellungsleiste zeigt derzeit die Runtime-Zusammenfassung:
 
@@ -98,17 +108,19 @@ Die Einstellungsleiste zeigt derzeit die Runtime-Zusammenfassung:
 
 ### 2. Modell- und Dateiauswahl
 
-`HomeScreen.tsx` stellt eine Benutzeroberfläche in 3 Schritten bereit:
+`HomeScreen.tsx` stellt eine UI in 3 Schritten bereit:
 
-1. Ein Modell und eine Mediendatei auswählen
-2. Den Modellstatus prüfen
-3. Das Transkriptionsergebnis lesen
+1. Modell und Mediendatei auswählen
+2. Modellstatus prüfen
+3. Transkriptionsergebnis lesen
 
 Der Bildschirm enthält:
 
-- Ein Dropdown-Menü für Whisper-Modelle
+- Ein Dropdown für Whisper-Modelle
 - Eine ausgeblendete Dateieingabe, die über eine Schaltfläche ausgelöst wird
-- Statustext und Spinner während der Verarbeitung
+- Start/Stop-Steuerung für das Mikrofon
+- Eine Live-Mikrofonpegelanzeige
+- Statustext und Ladeindikator während der Verarbeitung
 - Ein Textfeld für das Transkript
 - Eine Clear-Schaltfläche
 
@@ -116,7 +128,7 @@ Der Bildschirm enthält:
 
 `useTranscription.ts` enthält die Kernimplementierung.
 
-Es stellt Folgendes bereit:
+Er stellt Folgendes bereit:
 
 - `status`
 - `error`
@@ -125,26 +137,49 @@ Es stellt Folgendes bereit:
 - `selectedModelId`
 - `setSelectedModelId(modelId)`
 - `transcribeFile(file)`
+- `startStream(stream)`
+- `startMicrophone()`
+- `stopStream()`
+- `audioLevel`
 - `reset()`
 
 Verhalten:
 
-- Das ausgewählte Whisper-Modell wird bei der ersten Verwendung verzögert geladen
+- Das ausgewählte Whisper-Modell wird beim ersten Einsatz verzögert geladen
 - Die Pipeline-Instanz wird zwischengespeichert und wiederverwendet, solange dasselbe Modell ausgewählt bleibt
 - Vor dem Laden des Modells werden browserfreundliche ONNX-WASM-Einstellungen angewendet
-- Die ausgewählte Datei wird als `ArrayBuffer` eingelesen
-- Das Audio wird mit `AudioContext({ sampleRate: 16000 })` dekodiert
+- Die ausgewählte Datei wird als `ArrayBuffer` gelesen
+- Audio wird mit `AudioContext({ sampleRate: 16000 })` dekodiert
 - Mehrkanal-Audio wird auf Mono heruntergemischt
-- Whisper verwendet die automatische Spracherkennung, da `language` absichtlich nicht gesetzt wird
-- Der erkannte Text wird in den Transkriptionszustand geschrieben
+- Whisper verwendet automatische Spracherkennung, da `language` absichtlich nicht gesetzt ist
+- Der erkannte Text wird in den Transkript-State geschrieben
 
-### 4. Statusmeldungen
+### 4. Live-Mikrofon-Streaming
 
-Die aktuelle Benutzeroberfläche meldet Zustände wie:
+Zusätzlich zu lokalen Mediendateien unterstützt die App auch Live-Mikrofoneingaben.
+
+Wenn `Start microphone` gedrückt wird:
+
+1. Das ausgewählte Whisper-Modell wird in einem Web Worker vorbereitet.
+2. Der Browser fordert die Mikrofonberechtigung an.
+3. Das Mikrofon-Audio wird über die Web Audio API als Mono-PCM erfasst.
+4. PCM-Samples werden in kurzen Zeitfenstern gepuffert und zur Transkription an den Worker gesendet.
+5. Erkannter Text wird dem Transkript hinzugefügt, sobald ein Zeitfenster abgeschlossen ist.
+
+Die Live-Eingabe-UI enthält eine Mikrofonpegelanzeige auf Basis des eingehenden PCM-Signals, sodass Benutzer auch während der laufenden Transkriptionsverarbeitung bestätigen können, dass tatsächlich Audio erfasst wird.
+
+Wenn `Stop microphone` gedrückt wird, werden Mikrofonaufnahme und Medientracks sofort gestoppt. Bereits gepuffertes Audio wird im Worker asynchron abgeschlossen, sodass die Stop-Aktion nicht auf das Ende der Whisper-Inferenz warten muss.
+
+### 5. Statusmeldungen
+
+Die aktuelle UI meldet benutzerseitige Zustände wie:
 
 - idle: Modell und Datei auswählen
-- loading: Das erstmalige Laden des Modells kann langsam sein
+- loading: Das erste Laden des Modells kann langsam sein
 - ready: Modell geladen und einsatzbereit
+- starting-stream: Worker und Mikrofoneingabe werden vorbereitet
+- streaming: Live-Mikrofonaufnahme ist aktiv
+- finalizing-stream: Mikrofonaufnahme wurde beendet und gepuffertes Audio wird noch transkribiert
 - transcribing: Lokale Transkription im Browser läuft
 - done: Transkription abgeschlossen
 - error: Fehlermeldung wird unterhalb des Statusblocks angezeigt
@@ -153,7 +188,7 @@ Die aktuelle Benutzeroberfläche meldet Zustände wie:
 
 Der UI-Text weist darauf hin, dass Benutzer Audio- oder Videodateien auswählen können und Whisper im Browser Sprache aus unterstützten Medien wie MP3 oder MP4 erkennen kann.
 
-Die tatsächliche Implementierung dekodiert die ausgewählte Datei jedoch mit `AudioContext.decodeAudioData()`. In der Praxis hängt eine erfolgreiche Dekodierung von der Codec-Unterstützung des Browsers ab. Das unterstützte Verhalten wird daher letztlich dadurch begrenzt, welche Inhalte der Browser des Benutzers aus der ausgewählten Mediendatei dekodieren kann.
+Die tatsächliche Implementierung dekodiert die ausgewählte Datei jedoch mit `AudioContext.decodeAudioData()`. In der Praxis hängt eine erfolgreiche Dekodierung von der Codec-Unterstützung des Browsers ab. Das tatsächlich unterstützte Verhalten ist daher letztlich darauf beschränkt, was der Browser des Benutzers aus der ausgewählten Mediendatei dekodieren kann.
 
 ---
 
@@ -174,9 +209,9 @@ npm ci
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-Dadurch wird der Dienst auf port `5173` gestartet.
+Dadurch wird der Dienst auf Port `5173` gestartet.
 
-## Tests
+## Test
 
 ```bash
 cd frontend/app
@@ -197,9 +232,9 @@ docker compose build
 docker compose up
 ```
 
-Dadurch wird der Dienst auf port `5173` gestartet.
+Dadurch wird der Dienst auf Port `5173` gestartet.
 
-## Tests
+## Test
 
 ```bash
 docker compose \
@@ -210,10 +245,12 @@ frontend_test
 
 ## Hinweise und Einschränkungen
 
-- Das Modell wird im Browser geladen und kann beim ersten Aufruf etwas Zeit benötigen
+- Das Modell wird im Browser geladen und kann beim ersten Einsatz etwas Zeit benötigen
 - Größere Modelle benötigen mehr Arbeitsspeicher
-- Die Transkriptionsgeschwindigkeit hängt vom Browser und vom Gerät ab
+- Die Transkriptionsgeschwindigkeit hängt von Browser und Gerät ab
 - Die Unterstützung für Mediendekodierung hängt von der Codec-Unterstützung des Browsers ab
+- Die Live-Mikrofontranskription hat eine kurze Verzögerung, da Audio in gepufferten Zeitfenstern verarbeitet wird
+- Für Live-Streaming ist die Mikrofonberechtigung des Browsers erforderlich
 - Die aktuelle App besitzt keinen Backend-Transkriptionsdienst; die Transkription erfolgt clientseitig
 
 ---

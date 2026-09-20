@@ -1,5 +1,3 @@
-/// <reference lib="webworker" />
-
 import { env, pipeline } from "@huggingface/transformers";
 
 type InitMessage = {
@@ -22,6 +20,11 @@ type CancelSessionMessage = {
 };
 
 type IncomingMessage = InitMessage | TranscribeMessage | CancelSessionMessage;
+
+const worker = globalThis as unknown as {
+  onmessage: ((event: MessageEvent<IncomingMessage>) => void) | null;
+  postMessage: (message: unknown) => void;
+};
 
 let asr: any | null = null;
 let loadedModelId: string | null = null;
@@ -64,7 +67,7 @@ function enqueue(task: () => Promise<void>) {
   });
 }
 
-self.onmessage = (event: MessageEvent<IncomingMessage>) => {
+worker.onmessage = (event: MessageEvent<IncomingMessage>) => {
   const message = event.data;
 
   if (message.type === "cancel-session") {
@@ -76,13 +79,13 @@ self.onmessage = (event: MessageEvent<IncomingMessage>) => {
     enqueue(async () => {
       try {
         await ensureModel(message.modelId);
-        self.postMessage({
+        worker.postMessage({
           type: "model-ready",
           requestId: message.requestId,
           modelId: message.modelId,
         });
       } catch (error) {
-        self.postMessage({
+        worker.postMessage({
           type: "model-error",
           requestId: message.requestId,
           modelId: message.modelId,
@@ -99,7 +102,7 @@ self.onmessage = (event: MessageEvent<IncomingMessage>) => {
   enqueue(async () => {
     if (cancelledSessions.has(message.sessionId)) return;
     if (!asr) {
-      self.postMessage({
+      worker.postMessage({
         type: "chunk-error",
         sessionId: message.sessionId,
         chunkId: message.chunkId,
@@ -117,14 +120,14 @@ self.onmessage = (event: MessageEvent<IncomingMessage>) => {
       const result = await asr(new Float32Array(message.pcm), options);
       if (cancelledSessions.has(message.sessionId)) return;
 
-      self.postMessage({
+      worker.postMessage({
         type: "transcript",
         sessionId: message.sessionId,
         chunkId: message.chunkId,
         text: extractText(result),
       });
     } catch (error) {
-      self.postMessage({
+      worker.postMessage({
         type: "chunk-error",
         sessionId: message.sessionId,
         chunkId: message.chunkId,

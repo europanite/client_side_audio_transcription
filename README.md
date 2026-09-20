@@ -36,7 +36,7 @@ No installation, registration, or payment required.
 This project is a client-side transcription web app built with React, TypeScript, and Vite.
 It runs Whisper directly in the browser through `@huggingface/transformers`, so media files are processed locally instead of being uploaded to a backend for transcription.
 
-The current implementation supports selecting a Whisper model in the UI, choosing a local media file, loading the selected model on demand, and displaying the recognized text in a read-only transcript area.
+The current implementation supports selecting a Whisper model in the UI, transcribing local media files, streaming live microphone input, loading the selected model on demand, and displaying recognized text in a read-only transcript area.
 
 ## ✨ Features
 
@@ -48,6 +48,14 @@ The current implementation supports selecting a Whisper model in the UI, choosin
   1. Loading the Whisper model.
   2. Checking model status.
   3. Uploading audio and running transcription, with clear status messages for each step.
+
+- **Live microphone streaming transcription**  
+  The app can capture microphone audio directly in the browser and transcribe it continuously without uploading audio to a server.
+  - Live PCM audio is captured with the Web Audio API
+  - Audio is buffered into short windows before Whisper inference
+  - Streaming Whisper inference runs in a Web Worker to keep the UI responsive
+  - A live microphone level meter shows whether audio is actually being received
+  - `Stop microphone` stops capture immediately, while remaining buffered audio is finalized asynchronously
 
 - **In-browser transcription** with `@huggingface/transformers`
 - **Multilingual Whisper model selection** in the UI
@@ -108,6 +116,8 @@ The screen includes:
 
 - A Whisper model dropdown
 - A hidden file input triggered by a button
+- Start/Stop microphone controls
+- A live microphone level meter
 - Status text and spinner while processing
 - A transcript textarea
 - A Clear button
@@ -125,6 +135,10 @@ It exposes:
 - `selectedModelId`
 - `setSelectedModelId(modelId)`
 - `transcribeFile(file)`
+- `startStream(stream)`
+- `startMicrophone()`
+- `stopStream()`
+- `audioLevel`
 - `reset()`
 
 Behavior:
@@ -138,13 +152,32 @@ Behavior:
 - Whisper runs with automatic language detection because `language` is intentionally left unset
 - The recognized text is written to the transcript state
 
-### 4. Status messages
+### 4. Live microphone streaming
+
+The app also supports live microphone input in addition to local media files.
+
+When `Start microphone` is pressed:
+
+1. The selected Whisper model is prepared in a Web Worker.
+2. The browser requests microphone permission.
+3. Microphone audio is captured as mono PCM through the Web Audio API.
+4. PCM samples are buffered into short windows and sent to the Worker for transcription.
+5. Recognized text is appended to the transcript as each window finishes.
+
+The live input UI includes a microphone level meter based on the incoming PCM signal, so users can confirm that audio is actually being captured even while transcription is still processing.
+
+When `Stop microphone` is pressed, microphone capture and the media tracks are stopped immediately. Any audio that was already buffered is finalized asynchronously in the Worker so the Stop action does not need to wait for Whisper inference to finish.
+
+### 5. Status messages
 
 The current UI reports user-facing states such as:
 
 - idle: choose a model and a file
 - loading: first model load may be slow
 - ready: model loaded and ready
+- starting-stream: preparing the Worker and microphone input
+- streaming: live microphone capture is active
+- finalizing-stream: microphone capture has stopped and buffered audio is still being transcribed
 - transcribing: local browser transcription is running
 - done: transcription finished
 - error: failure message shown below the status block
@@ -214,6 +247,8 @@ frontend_test
 - Larger models use more memory
 - Transcription speed depends on the browser and device
 - Media decoding support depends on browser codec support
+- Live microphone transcription has a short delay because audio is processed in buffered windows
+- Browser microphone permission is required for live streaming
 - The current app has no backend transcription service; transcription is performed client-side
 
 ---

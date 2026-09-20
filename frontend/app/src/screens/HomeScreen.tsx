@@ -191,7 +191,7 @@ const HomeScreen = () => {
           </button>
           <button
             type="button"
-            className="btn secondary"
+            className={`btn ${canStopMicrophone ? "primary" : "secondary"}`}
             onClick={handleStopMicrophoneClick}
             disabled={!canStopMicrophone}
           >

@@ -22,47 +22,57 @@
   <a href="./README.fr.md">🇫🇷 Français</a>
 </p>
 
+> **अनुवाद सूचना:** यह README, [`README.md`](./README.md) का अनुवादित संस्करण है। किसी भी अंतर की स्थिति में अंग्रेज़ी संस्करण को अंतिम प्रामाणिक स्रोत माना जाएगा।
+
 !["web_ui"](./assets/images/web_ui.png)
 
  [PlayGround](https://europanite.github.io/client_side_audio_transcription/)
 
-Whisper और Transformers.js द्वारा संचालित, ब्राउज़र-आधारित AI ट्रांसक्रिप्शन प्लेग्राउंड।
-किसी इंस्टॉलेशन, पंजीकरण या भुगतान की आवश्यकता नहीं है।
+Whisper और Transformers.js पर आधारित ब्राउज़र-आधारित AI ट्रांसक्रिप्शन प्लेग्राउंड।
+इंस्टॉलेशन, रजिस्ट्रेशन या भुगतान की आवश्यकता नहीं है।
 
 ---
 
 ## 🚀 अवलोकन
 
-यह प्रोजेक्ट React, TypeScript और Vite से बनाया गया एक क्लाइंट-साइड ट्रांसक्रिप्शन वेब ऐप है।
-यह `@huggingface/transformers` के माध्यम से Whisper को सीधे ब्राउज़र में चलाता है, इसलिए ट्रांसक्रिप्शन के लिए मीडिया फ़ाइलों को बैकएंड पर अपलोड करने के बजाय स्थानीय रूप से प्रोसेस किया जाता है।
+यह प्रोजेक्ट React, TypeScript और Vite से बना एक client-side ट्रांसक्रिप्शन वेब ऐप है।
+यह `@huggingface/transformers` के माध्यम से Whisper को सीधे ब्राउज़र में चलाता है, इसलिए मीडिया फ़ाइलें ट्रांसक्रिप्शन के लिए backend पर अपलोड होने के बजाय स्थानीय रूप से प्रोसेस होती हैं।
 
-वर्तमान इम्प्लीमेंटेशन UI में Whisper मॉडल चुनने, स्थानीय मीडिया फ़ाइल चुनने, चयनित मॉडल को आवश्यकता पड़ने पर लोड करने और पहचाने गए टेक्स्ट को केवल-पढ़ने योग्य ट्रांसक्रिप्ट क्षेत्र में दिखाने का समर्थन करता है।
+वर्तमान implementation UI में Whisper मॉडल चुनने, स्थानीय मीडिया फ़ाइलों को ट्रांसक्राइब करने, लाइव माइक्रोफ़ोन इनपुट स्ट्रीम करने, चुने गए मॉडल को आवश्यकता पर लोड करने और पहचाने गए टेक्स्ट को read-only ट्रांसक्रिप्ट क्षेत्र में दिखाने का समर्थन करता है।
 
 ## ✨ विशेषताएँ
 
-- **क्लाइंट-साइड speech-to-text**  
-  React ऐप `@huggingface/transformers` की `automatic-speech-recognition` पाइपलाइन को सीधे ब्राउज़र में कॉल करता है, इसलिए ट्रांसक्रिप्शन पूरी तरह क्लाइंट पर चलता है।
+- **Client-side speech-to-text**  
+  React ऐप ब्राउज़र में सीधे `@huggingface/transformers` की `automatic-speech-recognition` pipeline को कॉल करता है, इसलिए ट्रांसक्रिप्शन पूरी तरह client पर चलता है।
 
-- **सरल 3-चरणीय वर्कफ़्लो**  
+- **सरल 3-चरणीय workflow**  
   UI आपको इन चरणों से मार्गदर्शन करता है:
   1. Whisper मॉडल लोड करना।
   2. मॉडल की स्थिति जाँचना।
-  3. ऑडियो अपलोड करना और ट्रांसक्रिप्शन चलाना, प्रत्येक चरण के लिए स्पष्ट स्थिति संदेशों के साथ।
+  3. ऑडियो अपलोड करना और ट्रांसक्रिप्शन चलाना, हर चरण के लिए स्पष्ट status messages के साथ।
 
-- `@huggingface/transformers` के साथ **ब्राउज़र में ट्रांसक्रिप्शन**
+- **लाइव माइक्रोफ़ोन streaming transcription**  
+  ऐप ब्राउज़र में सीधे माइक्रोफ़ोन ऑडियो कैप्चर कर सकता है और ऑडियो को सर्वर पर अपलोड किए बिना लगातार ट्रांसक्राइब कर सकता है।
+  - लाइव PCM ऑडियो Web Audio API से कैप्चर किया जाता है
+  - Whisper inference से पहले ऑडियो को छोटे windows में buffer किया जाता है
+  - UI को responsive रखने के लिए streaming Whisper inference Web Worker में चलता है
+  - लाइव माइक्रोफ़ोन level meter दिखाता है कि वास्तव में ऑडियो मिल रहा है या नहीं
+  - `Stop microphone` capture को तुरंत रोकता है, जबकि बचा हुआ buffered audio asynchronous रूप से finalize होता है
+
+- `@huggingface/transformers` के साथ **ब्राउज़र के भीतर ट्रांसक्रिप्शन**
 - UI में **बहुभाषी Whisper मॉडल चयन**
-- समर्थित बिल्ट-इन मॉडल विकल्प:
+- समर्थित built-in मॉडल विकल्प:
   - `Xenova/whisper-tiny`
   - `Xenova/whisper-base`
   - `Xenova/whisper-small`
 
-- `AudioContext` के माध्यम से क्लाइंट-साइड ऑडियो डिकोडिंग को 16 kHz पर करना
-- इन्फ़रेंस से पहले स्टीरियो को मोनो में मिलाना
-- लंबे मीडिया के लिए chunked ट्रांसक्रिप्शन सेटिंग्स:
+- `AudioContext` के माध्यम से client-side ऑडियो को 16 kHz पर decode करना
+- inference से पहले stereo-to-mono mixing
+- लंबे मीडिया के लिए chunked transcription सेटिंग्स:
   - `chunk_length_s: 20`
   - `stride_length_s: 5`
 
-- स्वीकार्य इनपुट:
+- स्वीकार किए जाने वाले input:
   - `stream`
   - `mp4`
   - `webm`
@@ -79,9 +89,9 @@ Whisper और Transformers.js द्वारा संचालित, ब्�
 - Frontend: React + TypeScript + Vite
 - ML runtime: `@huggingface/transformers`
 - Inference task: `automatic-speech-recognition`
-- ब्राउज़र ऑडियो हैंडलिंग: Web Audio API (`AudioContext`)
-- टेस्टिंग: Jest + Testing Library
-- कंटेनर टूलिंग: Docker + Docker Compose
+- ब्राउज़र ऑडियो handling: Web Audio API (`AudioContext`)
+- Testing: Jest + Testing Library
+- Container tooling: Docker + Docker Compose
 
 ---
 
@@ -90,33 +100,35 @@ Whisper और Transformers.js द्वारा संचालित, ब्�
 
 ### 1. ऐप लेआउट
 
-`App.tsx` ऐप shell, title, subtitle, `SettingsBar` और `HomeScreen` को render करता है।
+`App.tsx` app shell, title, subtitle, `SettingsBar` और `HomeScreen` को render करता है।
 
-settings bar वर्तमान में runtime सारांश दिखाता है:
+Settings bar वर्तमान में runtime summary दिखाता है:
 
 - `Transformers.js + Whisper`
 
 ### 2. मॉडल और फ़ाइल चयन
 
-`HomeScreen.tsx` 3-चरणीय UI प्रदान करता है:
+`HomeScreen.tsx` एक 3-चरणीय UI देता है:
 
-1. मॉडल और मीडिया फ़ाइल चुनें
+1. एक मॉडल और मीडिया फ़ाइल चुनें
 2. मॉडल की स्थिति जाँचें
 3. ट्रांसक्रिप्शन परिणाम पढ़ें
 
 स्क्रीन में शामिल हैं:
 
 - Whisper मॉडल dropdown
-- एक hidden file input, जिसे button से trigger किया जाता है
+- बटन से trigger होने वाला hidden file input
+- Start/Stop microphone controls
+- लाइव माइक्रोफ़ोन level meter
 - प्रोसेसिंग के दौरान status text और spinner
-- एक transcript textarea
-- Clear button
+- Transcript textarea
+- Clear बटन
 
 ### 3. ट्रांसक्रिप्शन hook
 
-`useTranscription.ts` मुख्य इम्प्लीमेंटेशन है।
+`useTranscription.ts` मुख्य implementation है।
 
-यह निम्नलिखित उपलब्ध कराता है:
+यह निम्न को expose करता है:
 
 - `status`
 - `error`
@@ -125,43 +137,66 @@ settings bar वर्तमान में runtime सारांश दि�
 - `selectedModelId`
 - `setSelectedModelId(modelId)`
 - `transcribeFile(file)`
+- `startStream(stream)`
+- `startMicrophone()`
+- `stopStream()`
+- `audioLevel`
 - `reset()`
 
 व्यवहार:
 
-- चयनित Whisper मॉडल पहली बार उपयोग पर lazy-load होता है
-- यदि वही मॉडल चयनित रहता है, तो pipeline instance cache होकर दोबारा उपयोग होता है
-- मॉडल लोड करने से पहले ब्राउज़र-अनुकूल ONNX WASM settings लागू की जाती हैं
-- चयनित फ़ाइल को `ArrayBuffer` के रूप में पढ़ा जाता है
-- ऑडियो को `AudioContext({ sampleRate: 16000 })` से decode किया जाता है
-- multi-channel ऑडियो को mono में mix down किया जाता है
-- Whisper automatic language detection के साथ चलता है क्योंकि `language` जानबूझकर unset छोड़ा गया है
+- चुना गया Whisper मॉडल पहली बार उपयोग होने पर lazily load होता है
+- यदि वही मॉडल चुना रहता है, तो pipeline instance cache होकर फिर से उपयोग होता है
+- मॉडल लोड होने से पहले browser-friendly ONNX WASM settings लागू की जाती हैं
+- चुनी गई फ़ाइल को `ArrayBuffer` के रूप में पढ़ा जाता है
+- ऑडियो `AudioContext({ sampleRate: 16000 })` से decode किया जाता है
+- Multi-channel ऑडियो को mono में mix down किया जाता है
+- `language` को जानबूझकर unset रखा गया है, इसलिए Whisper automatic language detection के साथ चलता है
 - पहचाना गया टेक्स्ट transcript state में लिखा जाता है
 
-### 4. स्थिति संदेश
+### 4. लाइव माइक्रोफ़ोन streaming
 
-वर्तमान UI उपयोगकर्ता को निम्न स्थितियाँ दिखाता है:
+स्थानीय मीडिया फ़ाइलों के अलावा, ऐप लाइव माइक्रोफ़ोन input का भी समर्थन करता है।
+
+जब `Start microphone` दबाया जाता है:
+
+1. चुना गया Whisper मॉडल Web Worker में तैयार किया जाता है।
+2. ब्राउज़र माइक्रोफ़ोन permission माँगता है।
+3. Web Audio API के माध्यम से माइक्रोफ़ोन ऑडियो को mono PCM के रूप में कैप्चर किया जाता है।
+4. PCM samples को छोटे windows में buffer करके ट्रांसक्रिप्शन के लिए Worker को भेजा जाता है।
+5. हर window पूरा होने पर पहचाना गया टेक्स्ट transcript में जोड़ा जाता है।
+
+लाइव input UI में incoming PCM signal पर आधारित माइक्रोफ़ोन level meter शामिल है, जिससे ट्रांसक्रिप्शन प्रोसेस होते समय भी उपयोगकर्ता पुष्टि कर सकते हैं कि ऑडियो वास्तव में कैप्चर हो रहा है।
+
+जब `Stop microphone` दबाया जाता है, तो माइक्रोफ़ोन capture और media tracks तुरंत रुक जाते हैं। पहले से buffer किया गया ऑडियो Worker में asynchronous रूप से finalize होता है, इसलिए Stop action को Whisper inference पूरा होने की प्रतीक्षा नहीं करनी पड़ती।
+
+### 5. Status messages
+
+वर्तमान UI उपयोगकर्ता को ये अवस्थाएँ दिखाता है:
 
 - idle: मॉडल और फ़ाइल चुनें
-- loading: मॉडल का पहला load धीमा हो सकता है
-- ready: मॉडल लोड होकर तैयार है
-- transcribing: स्थानीय ब्राउज़र ट्रांसक्रिप्शन चल रहा है
+- loading: पहली बार मॉडल लोड होने में समय लग सकता है
+- ready: मॉडल लोड हो चुका है और तैयार है
+- starting-stream: Worker और माइक्रोफ़ोन input तैयार किया जा रहा है
+- streaming: लाइव माइक्रोफ़ोन capture सक्रिय है
+- finalizing-stream: माइक्रोफ़ोन capture रुक चुका है और buffered audio अभी भी ट्रांसक्राइब हो रहा है
+- transcribing: स्थानीय browser transcription चल रहा है
 - done: ट्रांसक्रिप्शन पूरा हुआ
 - error: failure message status block के नीचे दिखाया जाता है
 
 ## समर्थित मीडिया संबंधी नोट्स
 
-UI टेक्स्ट बताता है कि उपयोगकर्ता ऑडियो या वीडियो फ़ाइलें चुन सकते हैं और Whisper ब्राउज़र में MP3 या MP4 जैसे समर्थित मीडिया से speech पहचान सकता है।
+UI टेक्स्ट बताता है कि उपयोगकर्ता audio या video फ़ाइलें चुन सकते हैं और Whisper ब्राउज़र में MP3 या MP4 जैसे समर्थित media से speech पहचान सकता है।
 
-हालाँकि, वास्तविक इम्प्लीमेंटेशन चयनित फ़ाइल को `AudioContext.decodeAudioData()` से decode करता है। व्यवहार में सफल decoding ब्राउज़र codec support पर निर्भर करती है। इसका अर्थ है कि समर्थित व्यवहार अंततः इस बात से सीमित है कि उपयोगकर्ता का ब्राउज़र चयनित मीडिया फ़ाइल को decode कर सकता है या नहीं।
+हालाँकि, वास्तविक implementation चुनी गई फ़ाइल को `AudioContext.decodeAudioData()` से decode करता है। व्यवहार में, सफल decoding ब्राउज़र codec support पर निर्भर करती है। इसलिए वास्तव में क्या समर्थित होगा, यह इस बात पर निर्भर है कि उपयोगकर्ता का ब्राउज़र चुनी गई media फ़ाइल को decode कर सकता है या नहीं।
 
 ---
 
-## 🚀 शुरू करना
+## 🚀 शुरुआत करना
 
 ## npm
 
-### आवश्यकताएँ
+### पूर्वापेक्षाएँ
 
 - Node.js 20+ अनुशंसित
 - npm
@@ -174,7 +209,7 @@ npm ci
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-इससे सेवा port `5173` पर शुरू होती है।
+यह सेवा को port `5173` पर शुरू करता है।
 
 ## टेस्ट
 
@@ -186,7 +221,7 @@ npm test -- --ci --runInBand --coverage --verbose
 
 ## docker compose
 
-### आवश्यकताएँ
+### पूर्वापेक्षाएँ
 
 - [Docker Compose](https://docs.docker.com/compose/)
 
@@ -197,7 +232,7 @@ docker compose build
 docker compose up
 ```
 
-इससे सेवा port `5173` पर शुरू होती है।
+यह सेवा को port `5173` पर शुरू करता है।
 
 ## टेस्ट
 
@@ -210,10 +245,12 @@ frontend_test
 
 ## नोट्स और सीमाएँ
 
-- मॉडल loading ब्राउज़र में होती है और पहली बार उपयोग पर समय ले सकती है
+- मॉडल ब्राउज़र में लोड होता है और पहली बार उपयोग में समय लग सकता है
 - बड़े मॉडल अधिक memory उपयोग करते हैं
-- ट्रांसक्रिप्शन की गति ब्राउज़र और device पर निर्भर करती है
-- मीडिया decoding support ब्राउज़र codec support पर निर्भर करती है
+- ट्रांसक्रिप्शन की गति ब्राउज़र और डिवाइस पर निर्भर करती है
+- Media decoding support ब्राउज़र codec support पर निर्भर करता है
+- लाइव माइक्रोफ़ोन ट्रांसक्रिप्शन में थोड़ा delay होता है क्योंकि ऑडियो buffered windows में प्रोसेस होता है
+- लाइव streaming के लिए ब्राउज़र माइक्रोफ़ोन permission आवश्यक है
 - वर्तमान ऐप में कोई backend transcription service नहीं है; ट्रांसक्रिप्शन client-side पर किया जाता है
 
 ---
