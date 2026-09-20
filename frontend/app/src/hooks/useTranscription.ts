@@ -180,6 +180,7 @@ function mixToMono(audioBuffer: AudioBuffer): Float32Array {
 const WHISPER_SAMPLE_RATE = 16_000;
 const STREAM_WINDOW_SECONDS = 6;
 const MIN_STREAM_FLUSH_SECONDS = 0.5;
+const STREAM_WORKER_INIT_TIMEOUT_MS = 300_000;
 
 function concatFloat32(chunks: Float32Array[]): Float32Array {
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -385,6 +386,21 @@ export function useTranscription(): UseTranscriptionResult {
       const requestId = workerRequestIdRef.current + 1;
       workerRequestIdRef.current = requestId;
       const promise = new Promise<Worker>((resolve, reject) => {
+        const cleanup = () => {
+          clearTimeout(timeoutId);
+          worker.removeEventListener("message", handleMessage);
+          worker.removeEventListener("error", handleError);
+          worker.removeEventListener("messageerror", handleMessageError);
+        };
+        const fail = (message: string) => {
+          cleanup();
+          if (streamWorkerRef.current === worker) {
+            worker.terminate();
+            streamWorkerRef.current = null;
+            streamWorkerModelIdRef.current = null;
+          }
+          reject(new Error(message));
+        };
         const handleMessage = (event: MessageEvent<StreamWorkerMessage>) => {
           const message = event.data;
           if (
@@ -394,16 +410,28 @@ export function useTranscription(): UseTranscriptionResult {
             return;
           }
 
-          worker.removeEventListener("message", handleMessage);
           if (message.type === "model-ready") {
+            cleanup();
             streamWorkerModelIdRef.current = modelId;
             resolve(worker);
           } else {
-            reject(new Error(message.error));
+            fail(message.error);
           }
         };
+        const handleError = (event: ErrorEvent) => {
+          fail(event.message || "Whisper worker failed to start.");
+        };
+        const handleMessageError = () => {
+          fail("Whisper worker communication failed.");
+        };
+        const timeoutId = setTimeout(
+          () => fail("Whisper worker model loading timed out."),
+          STREAM_WORKER_INIT_TIMEOUT_MS
+        );
 
         worker.addEventListener("message", handleMessage);
+        worker.addEventListener("error", handleError);
+        worker.addEventListener("messageerror", handleMessageError);
         worker.postMessage({ type: "init", requestId, modelId });
       }).finally(() => {
         if (streamWorkerInitRef.current?.modelId === modelId) {
@@ -820,13 +848,14 @@ registerProcessor("whisper-pcm-capture", WhisperPcmCaptureProcessor);
     setIsStreamStarting(true);
     setAudioLevel(0);
     setError(null);
-    setStatus("starting-stream");
+    setStatus("loading-model");
 
     try {
       // Heavy model initialization runs in a Worker, so Stop remains clickable.
       await ensureStreamWorkerModel(selectedModelIdState);
       if (requestId !== streamSessionIdRef.current) return;
 
+      setStatus("starting-stream");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
