@@ -349,7 +349,9 @@ export function useTranscription(): UseTranscriptionResult {
         env.backends.onnx.wasm.numThreads = 1;
       }
 
-      const asr = await pipeline("automatic-speech-recognition", modelId);
+      const asr = await pipeline("automatic-speech-recognition", modelId, {
+        dtype: "q8",
+      });
       pipelineRef.current = asr;
       loadedModelIdRef.current = modelId;
       setStatus("ready");

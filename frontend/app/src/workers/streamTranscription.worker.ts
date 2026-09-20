@@ -56,7 +56,9 @@ async function ensureModel(modelId: string) {
     await asr.dispose();
   }
 
-  asr = await pipeline("automatic-speech-recognition", modelId);
+  asr = await pipeline("automatic-speech-recognition", modelId, {
+    dtype: "q8",
+  });
   loadedModelId = modelId;
   return asr;
 }
