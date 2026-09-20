@@ -1,5 +1,3 @@
-import { env, pipeline } from "@huggingface/transformers";
-
 type InitMessage = {
   type: "init";
   requestId: number;
@@ -46,6 +44,8 @@ function extractText(result: unknown): string {
 
 async function ensureModel(modelId: string) {
   if (asr && loadedModelId === modelId) return asr;
+
+  const { env, pipeline } = await import("@huggingface/transformers");
 
   env.allowRemoteModels = true;
   if (env.backends?.onnx?.wasm) {
