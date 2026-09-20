@@ -26,6 +26,12 @@ describe("useTranscription hook", () => {
     expect(result.current.availableLanguages.length).toBeGreaterThan(0);
     expect(typeof result.current.setSelectedLanguageId).toBe("function");
     expect(typeof result.current.transcribeFile).toBe("function");
+    expect(result.current.isStreaming).toBe(false);
+    expect(result.current.isStreamStarting).toBe(false);
+    expect(result.current.audioLevel).toBe(0);
+    expect(typeof result.current.startStream).toBe("function");
+    expect(typeof result.current.startMicrophone).toBe("function");
+    expect(typeof result.current.stopStream).toBe("function");
     expect(typeof result.current.reset).toBe("function");
   });
 
@@ -43,5 +49,21 @@ describe("useTranscription hook", () => {
     expect(result.current.selectedLanguageId).toBe(
       DEFAULT_TRANSCRIPTION_LANGUAGE_ID
     );
+  });
+
+  it("rejects a MediaStream without audio tracks", async () => {
+    const { result } = renderHook(() => useTranscription());
+    const stream = {
+      getAudioTracks: () => [],
+      getTracks: () => [],
+    } as unknown as MediaStream;
+
+    await act(async () => {
+      await result.current.startStream(stream);
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toContain("does not contain an audio track");
+    expect(result.current.isStreaming).toBe(false);
   });
 });

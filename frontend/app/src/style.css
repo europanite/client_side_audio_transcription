@@ -258,3 +258,47 @@ body {
   font-size: 11px;
   color: #4b5563;
 }
+
+/* Live microphone level */
+
+.audio-level-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.audio-level-label,
+.audio-level-value {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #374151;
+}
+
+.audio-level-label {
+  width: 56px;
+}
+
+.audio-level-value {
+  width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.audio-level-meter {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid #9ca3af;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+}
+
+.audio-level-fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background-color: #111827;
+  transition: width 50ms linear;
+}

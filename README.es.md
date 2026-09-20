@@ -1,4 +1,4 @@
-# [Transcripción de audio del lado del cliente](https://github.com/europanite/client_side_audio_transcription "Client-Side Audio Transcription")
+# [Client-Side Audio Transcription](https://github.com/europanite/client_side_audio_transcription "Client-Side Audio Transcription")
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![OS](https://img.shields.io/badge/OS-Linux%20%7C%20macOS%20%7C%20Windows-blue)
@@ -9,7 +9,6 @@
 ![React](https://img.shields.io/badge/react-%2320232a.svg?logo=react&logoColor=%2361DAFB)
 ![Jest](https://img.shields.io/badge/-jest-%23C21325?logo=jest&logoColor=white)
 ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?logo=vite&logoColor=white)
-
 
 <p align="right">
   <a href="./README.md">🇺🇸 English</a> |
@@ -23,53 +22,61 @@
   <a href="./README.fr.md">🇫🇷 Français</a>
 </p>
 
+> **Aviso de traducción:** Este README es una versión traducida de [`README.md`](./README.md). En caso de discrepancia, la versión en inglés es la fuente de referencia.
 
 !["web_ui"](./assets/images/web_ui.png)
 
  [PlayGround](https://europanite.github.io/client_side_audio_transcription/)
 
-
-Un playground de transcripción con IA basado en el navegador, impulsado por Whisper y Transformers.js.
+Un entorno de pruebas de transcripción con IA basado en el navegador, impulsado por Whisper y Transformers.js.
 No requiere instalación, registro ni pago.
 
 ---
 
 ## 🚀 Descripción general
 
-Este proyecto es una aplicación web de transcripción del lado del cliente construida con React, TypeScript y Vite.
-Ejecuta Whisper directamente en el navegador mediante `@huggingface/transformers`, por lo que los archivos multimedia se procesan localmente en lugar de subirse a un backend para la transcripción.
+Este proyecto es una aplicación web de transcripción del lado del cliente creada con React, TypeScript y Vite.
+Ejecuta Whisper directamente en el navegador mediante `@huggingface/transformers`, por lo que los archivos multimedia se procesan localmente en lugar de subirse a un backend para su transcripción.
 
-La implementación actual permite seleccionar un modelo Whisper en la UI, elegir un archivo multimedia local, cargar el modelo seleccionado bajo demanda y mostrar el texto reconocido en un área de transcripción de solo lectura.
+La implementación actual permite seleccionar un modelo de Whisper en la UI, transcribir archivos multimedia locales, transmitir en directo la entrada del micrófono, cargar el modelo seleccionado bajo demanda y mostrar el texto reconocido en un área de transcripción de solo lectura.
 
-## ✨ Características
+## ✨ Funciones
 
-- **speech-to-text del lado del cliente**  
-  La app React llama directamente en el navegador al pipeline `automatic-speech-recognition` de `@huggingface/transformers`, por lo que la transcripción se ejecuta completamente en el cliente.
+- **Conversión de voz a texto del lado del cliente**  
+  La aplicación React llama directamente en el navegador al pipeline `automatic-speech-recognition` de `@huggingface/transformers`, por lo que la transcripción se ejecuta por completo en el cliente.
 
-- **Flujo simple de 3 pasos**  
-  La UI te guía por:
-  1. Cargar el modelo Whisper.
+- **Flujo de trabajo sencillo de 3 pasos**  
+  La UI te guía por los siguientes pasos:
+  1. Cargar el modelo de Whisper.
   2. Comprobar el estado del modelo.
   3. Subir audio y ejecutar la transcripción, con mensajes de estado claros para cada paso.
 
+- **Transcripción en streaming del micrófono en directo**  
+  La aplicación puede capturar el audio del micrófono directamente en el navegador y transcribirlo de forma continua sin subir el audio a un servidor.
+  - El audio PCM en directo se captura con la Web Audio API
+  - El audio se almacena en búfer en ventanas cortas antes de la inferencia de Whisper
+  - La inferencia de Whisper en streaming se ejecuta en un Web Worker para mantener la UI fluida
+  - Un medidor de nivel del micrófono en directo indica si realmente se está recibiendo audio
+  - `Stop microphone` detiene la captura de inmediato, mientras que el audio restante en búfer se finaliza de forma asíncrona
+
 - **Transcripción en el navegador** con `@huggingface/transformers`
-- **Selección de modelos Whisper multilingües** en la UI
-- Opciones de modelos integrados compatibles:
+- **Selección de modelos multilingües de Whisper** en la UI
+- Opciones de modelo integradas compatibles:
   - `Xenova/whisper-tiny`
   - `Xenova/whisper-base`
   - `Xenova/whisper-small`
 
 - Decodificación de audio del lado del cliente a 16 kHz mediante `AudioContext`
 - Mezcla de estéreo a mono antes de la inferencia
-- Configuración de transcripción por fragmentos para medios más largos:
+- Configuración de transcripción por fragmentos para contenido multimedia más largo:
   - `chunk_length_s: 20`
   - `stride_length_s: 5`
 
-- La entrada de archivos acepta:
-  - `audio/*`
-  - `video/mp4`
-  - `video/webm`
-  - `video/ogg`
+- Entradas aceptadas:
+  - `stream`
+  - `mp4`
+  - `webm`
+  - `ogg`
   - `.mp4`
   - `.webm`
   - `.ogv`
@@ -80,11 +87,11 @@ La implementación actual permite seleccionar un modelo Whisper en la UI, elegir
 ## 🧱 Stack tecnológico
 
 - Frontend: React + TypeScript + Vite
-- ML runtime: `@huggingface/transformers`
-- Inference task: `automatic-speech-recognition`
-- Browser audio handling: Web Audio API (`AudioContext`)
-- Testing: Jest + Testing Library
-- Container tooling: Docker + Docker Compose
+- Runtime de ML: `@huggingface/transformers`
+- Tarea de inferencia: `automatic-speech-recognition`
+- Gestión de audio en el navegador: Web Audio API (`AudioContext`)
+- Pruebas: Jest + Testing Library
+- Herramientas de contenedores: Docker + Docker Compose
 
 ---
 
@@ -93,13 +100,13 @@ La implementación actual permite seleccionar un modelo Whisper en la UI, elegir
 
 ### 1. Diseño de la aplicación
 
-`App.tsx` renderiza el shell de la app, el título, el subtítulo, `SettingsBar` y `HomeScreen`.
+`App.tsx` renderiza la estructura de la aplicación, el título, el subtítulo, `SettingsBar` y `HomeScreen`.
 
-La barra de configuración muestra actualmente el resumen del runtime:
+La barra de ajustes muestra actualmente el resumen del runtime:
 
 - `Transformers.js + Whisper`
 
-### 2. Selección de modelo y archivo
+### 2. Selección del modelo y del archivo
 
 `HomeScreen.tsx` proporciona una UI de 3 pasos:
 
@@ -109,15 +116,17 @@ La barra de configuración muestra actualmente el resumen del runtime:
 
 La pantalla incluye:
 
-- Whisper model dropdown
-- A hidden file input triggered by a button
-- Status text and spinner while processing
-- A transcript textarea
-- A Clear button
+- Un desplegable de modelos de Whisper
+- Una entrada de archivo oculta activada mediante un botón
+- Controles Start/Stop del micrófono
+- Un medidor de nivel del micrófono en directo
+- Texto de estado y un indicador de carga durante el procesamiento
+- Un área de texto para la transcripción
+- Un botón Clear
 
 ### 3. Hook de transcripción
 
-`useTranscription.ts` es la implementación central.
+`useTranscription.ts` es la implementación principal.
 
 Expone:
 
@@ -128,48 +137,71 @@ Expone:
 - `selectedModelId`
 - `setSelectedModelId(modelId)`
 - `transcribeFile(file)`
+- `startStream(stream)`
+- `startMicrophone()`
+- `stopStream()`
+- `audioLevel`
 - `reset()`
 
 Comportamiento:
 
-- El modelo Whisper seleccionado se carga de forma diferida en el primer uso
+- El modelo de Whisper seleccionado se carga de forma diferida en el primer uso
 - La instancia del pipeline se almacena en caché y se reutiliza si sigue seleccionado el mismo modelo
-- Antes de cargar el modelo se aplican ajustes ONNX WASM adecuados para el navegador
-- El archivo seleccionado se lee como `ArrayBuffer`
+- Antes de cargar el modelo se aplican ajustes de ONNX WASM adecuados para el navegador
+- El archivo seleccionado se lee como un `ArrayBuffer`
 - El audio se decodifica con `AudioContext({ sampleRate: 16000 })`
 - El audio multicanal se mezcla a mono
-- Whisper se ejecuta con detección automática de idioma porque `language` se deja intencionalmente sin definir
-- El texto reconocido se escribe en el transcript state
+- Whisper se ejecuta con detección automática de idioma porque `language` se deja intencionadamente sin definir
+- El texto reconocido se escribe en el estado de la transcripción
 
-### 4. Mensajes de estado
+### 4. Streaming del micrófono en directo
 
-La UI actual informa estados orientados al usuario como:
+La aplicación también admite entrada de micrófono en directo, además de archivos multimedia locales.
 
-- idle: choose a model and a file
-- loading: first model load may be slow
-- ready: model loaded and ready
-- transcribing: local browser transcription is running
-- done: transcription finished
-- error: failure message shown below the status block
+Al pulsar `Start microphone`:
 
-## Notas sobre medios compatibles
+1. El modelo de Whisper seleccionado se prepara en un Web Worker.
+2. El navegador solicita permiso para usar el micrófono.
+3. El audio del micrófono se captura como PCM mono mediante la Web Audio API.
+4. Las muestras PCM se almacenan en búfer en ventanas cortas y se envían al Worker para su transcripción.
+5. El texto reconocido se añade a la transcripción a medida que termina cada ventana.
 
-El texto de la UI indica que los usuarios pueden seleccionar archivos de audio o video y que Whisper puede detectar voz en el navegador desde medios compatibles como MP3 o MP4.
+La UI de entrada en directo incluye un medidor de nivel del micrófono basado en la señal PCM entrante, de modo que los usuarios pueden confirmar que el audio se está capturando realmente incluso mientras la transcripción sigue procesándose.
 
-Sin embargo, la implementación real decodifica el archivo seleccionado usando `AudioContext.decodeAudioData()`. En la práctica, el éxito de la decodificación depende del soporte de códecs del navegador. Esto significa que el comportamiento compatible está finalmente limitado por lo que el navegador del usuario pueda decodificar del archivo multimedia seleccionado.
+Al pulsar `Stop microphone`, la captura del micrófono y las pistas multimedia se detienen de inmediato. El audio que ya estaba en búfer se finaliza de forma asíncrona en el Worker, por lo que la acción Stop no tiene que esperar a que termine la inferencia de Whisper.
+
+### 5. Mensajes de estado
+
+La UI actual muestra estados orientados al usuario como:
+
+- idle: elige un modelo y un archivo
+- loading: la primera carga del modelo puede ser lenta
+- ready: modelo cargado y listo
+- starting-stream: preparando el Worker y la entrada del micrófono
+- streaming: la captura del micrófono en directo está activa
+- finalizing-stream: la captura del micrófono se ha detenido y el audio en búfer sigue transcribiéndose
+- transcribing: se está ejecutando la transcripción local en el navegador
+- done: transcripción finalizada
+- error: se muestra un mensaje de error debajo del bloque de estado
+
+## Notas sobre los formatos multimedia compatibles
+
+El texto de la UI indica que los usuarios pueden seleccionar archivos de audio o vídeo y que Whisper puede detectar voz en el navegador a partir de formatos compatibles como MP3 o MP4.
+
+Sin embargo, la implementación real decodifica el archivo seleccionado mediante `AudioContext.decodeAudioData()`. En la práctica, que la decodificación funcione depende de los códecs compatibles con el navegador. Por tanto, el comportamiento admitido queda limitado por lo que el navegador del usuario pueda decodificar del archivo multimedia seleccionado.
 
 ---
 
 ## 🚀 Primeros pasos
 
-## Desarrollo local
+## npm
 
 ### Requisitos previos
 
-- Node.js 20+ recommended
+- Se recomienda Node.js 20+
 - npm
 
-### Ejecutar localmente con npm
+### Ejecutar
 
 ```bash
 cd frontend/app
@@ -177,18 +209,9 @@ npm ci
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-### Ejecutar localmente con Docker Compose
-
-```bash
-docker compose build
-docker compose up
-```
-
-Esto inicia el contenedor frontend y sirve la app Vite en el puerto `5173`.
+Esto inicia el servicio en el puerto `5173`.
 
 ## Pruebas
-
-### Ejecutar pruebas localmente
 
 ```bash
 cd frontend/app
@@ -196,24 +219,23 @@ npm ci
 npm test -- --ci --runInBand --coverage --verbose
 ```
 
-## docker compose desarrollo
+## docker compose
 
 ### Requisitos previos
+
 - [Docker Compose](https://docs.docker.com/compose/)
 
-### Compilar e iniciar todos los servicios:
+### Ejecutar
 
 ```bash
-
-# Build the image
 docker compose build
-
-# Run the container
 docker compose up
-
 ```
 
-### Prueba:
+Esto inicia el servicio en el puerto `5173`.
+
+## Pruebas
+
 ```bash
 docker compose \
 -f docker-compose.test.yml up \
@@ -223,11 +245,13 @@ frontend_test
 
 ## Notas y limitaciones
 
-- La carga del modelo ocurre en el navegador y puede tardar en el primer uso
-- Los modelos más grandes usan más memoria
+- El modelo se carga en el navegador y puede tardar la primera vez
+- Los modelos más grandes utilizan más memoria
 - La velocidad de transcripción depende del navegador y del dispositivo
-- El soporte de decodificación multimedia depende del soporte de códecs del navegador
-- La app actual no tiene servicio backend de transcripción; la transcripción se realiza del lado del cliente
+- La compatibilidad de decodificación multimedia depende de los códecs admitidos por el navegador
+- La transcripción en directo del micrófono tiene un breve retraso porque el audio se procesa en ventanas almacenadas en búfer
+- El streaming en directo requiere permiso del navegador para usar el micrófono
+- La aplicación actual no tiene un servicio backend de transcripción; la transcripción se realiza en el cliente
 
 ---
 

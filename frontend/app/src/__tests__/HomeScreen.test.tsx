@@ -51,6 +51,12 @@ const createBaseHookValue = (): MockUseTranscriptionReturn => ({
   selectedLanguageId: "english",
   setSelectedLanguageId: jest.fn(),
   transcribeFile: jest.fn(),
+  isStreaming: false,
+  isStreamStarting: false,
+  audioLevel: 0,
+  startStream: jest.fn(),
+  startMicrophone: jest.fn(),
+  stopStream: jest.fn(),
   reset: jest.fn(),
 });
 
@@ -67,7 +73,7 @@ describe("HomeScreen", () => {
     render(<HomeScreen />);
 
     expect(
-      screen.queryByText("Step 1 - Choose a model and media file")
+      screen.queryByText("Step 1 - Choose a model and input")
     ).not.toBeNull();
     expect(
       screen.queryByText("Step 2 - Model status")
@@ -152,6 +158,78 @@ describe("HomeScreen", () => {
     });
 
     expect(screen.queryByText("sample.mp4")).not.toBeNull();
+  });
+
+
+  it("starts microphone transcription from the live input button", async () => {
+    const startMicrophone = jest.fn().mockResolvedValue(undefined);
+
+    (useTranscription as jest.Mock).mockReturnValue({
+      ...createBaseHookValue(),
+      startMicrophone,
+    });
+
+    render(<HomeScreen />);
+    fireEvent.click(screen.getByText("Start microphone"));
+
+    await waitFor(() => {
+      expect(startMicrophone).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("allows stopping while microphone startup is still in progress", async () => {
+    const stopStream = jest.fn().mockResolvedValue(undefined);
+
+    (useTranscription as jest.Mock).mockReturnValue({
+      ...createBaseHookValue(),
+      status: "loading-model",
+      isStreamStarting: true,
+      stopStream,
+    });
+
+    render(<HomeScreen />);
+    const stopButton = screen.getByText("Stop microphone") as HTMLButtonElement;
+
+    expect(stopButton.disabled).toBe(false);
+    fireEvent.click(stopButton);
+
+    await waitFor(() => {
+      expect(stopStream).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("stops microphone transcription while streaming", async () => {
+    const stopStream = jest.fn().mockResolvedValue(undefined);
+
+    (useTranscription as jest.Mock).mockReturnValue({
+      ...createBaseHookValue(),
+      status: "streaming",
+      isStreaming: true,
+      stopStream,
+    });
+
+    render(<HomeScreen />);
+    fireEvent.click(screen.getByText("Stop microphone"));
+
+    await waitFor(() => {
+      expect(stopStream).toHaveBeenCalledTimes(1);
+    });
+  });
+
+
+  it("shows the live microphone level meter", () => {
+    (useTranscription as jest.Mock).mockReturnValue({
+      ...createBaseHookValue(),
+      status: "streaming",
+      isStreaming: true,
+      audioLevel: 0.42,
+    });
+
+    render(<HomeScreen />);
+
+    const meter = screen.getByRole("meter", { name: "Microphone input level" });
+    expect(meter.getAttribute("aria-valuenow")).toBe("42");
+    expect(screen.queryByText("42%")).not.toBeNull();
   });
 
   it("disables the Clear button when there is no transcript, error, or file", () => {
