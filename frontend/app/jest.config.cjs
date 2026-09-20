@@ -8,7 +8,7 @@ module.exports = {
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js",
-    "\\?worker&url$": "<rootDir>/src/__mocks__/workerUrlMock.js",
+    "^\\.\\./workers/createStreamTranscriptionWorker$": "<rootDir>/src/__mocks__/streamWorkerFactoryMock.js",
     "\\?worker$": "<rootDir>/src/__mocks__/workerMock.js",
   },
   transform: {
