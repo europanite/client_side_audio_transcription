@@ -10,7 +10,6 @@
 ![Jest](https://img.shields.io/badge/-jest-%23C21325?logo=jest&logoColor=white)
 ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?logo=vite&logoColor=white)
 
-
 <p align="right">
   <a href="./README.md">🇺🇸 English</a> |
   <a href="./README.hi.md">🇮🇳 हिंदी</a> |
@@ -22,7 +21,6 @@
   <a href="./README.de.md">🇩🇪 Deutsch</a> |
   <a href="./README.fr.md">🇫🇷 Français</a>
 </p>
-
 
 !["web_ui"](./assets/images/web_ui.png)
 
@@ -64,11 +62,11 @@ The current implementation supports selecting a Whisper model in the UI, choosin
   - `chunk_length_s: 20`
   - `stride_length_s: 5`
 
-- File input accepts:
-  - `audio/*`
-  - `video/mp4`
-  - `video/webm`
-  - `video/ogg`
+- Input accepts:
+  - `stream`
+  - `mp4`
+  - `webm`
+  - `ogg`
   - `.mp4`
   - `.webm`
   - `.ogv`
@@ -161,14 +159,14 @@ However, the actual implementation decodes the selected file using `AudioContext
 
 ## 🚀 Getting Started
 
-## Local development
+## npm
 
 ### Prerequisites
 
 - Node.js 20+ recommended
 - npm
 
-### Run locally with npm
+### Run
 
 ```bash
 cd frontend/app
@@ -176,18 +174,9 @@ npm ci
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-### Run locally with Docker Compose
+This starts the service on port `5173`.
 
-```bash
-docker compose build
-docker compose up
-```
-
-This starts the frontend container and serves the Vite app on port `5173`.
-
-## Testing
-
-### Run tests locally
+## Test
 
 ```bash
 cd frontend/app
@@ -195,24 +184,23 @@ npm ci
 npm test -- --ci --runInBand --coverage --verbose
 ```
 
-## docker compose development
+## docker compose
 
 ### Prerequisites
+
 - [Docker Compose](https://docs.docker.com/compose/)
 
-### Build and start all services:
+### Run
 
 ```bash
-
-# Build the image
 docker compose build
-
-# Run the container
 docker compose up
-
 ```
 
-### Test:
+This starts the service on port `5173`.
+
+## Test
+
 ```bash
 docker compose \
 -f docker-compose.test.yml up \

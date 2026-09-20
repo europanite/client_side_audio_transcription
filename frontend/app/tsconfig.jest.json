@@ -5,7 +5,7 @@
     "moduleResolution": "node",
     "verbatimModuleSyntax": false,
     "esModuleInterop": true,
-    "types": ["jest", "node"],
+    "types": ["jest", "node", "vite/client"],
     "allowJs": true
   },
   "include": [

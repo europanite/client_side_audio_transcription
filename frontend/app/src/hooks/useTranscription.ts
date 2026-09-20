@@ -1,12 +1,16 @@
 // frontend/app/src/hooks/useTranscription.ts
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { env, pipeline } from "@huggingface/transformers";
+import StreamTranscriptionWorker from "../workers/streamTranscription.worker?worker";
 
 export type TranscriptionStatus =
   | "idle"
   | "loading-model"
   | "ready"
   | "transcribing"
+  | "starting-stream"
+  | "streaming"
+  | "finalizing-stream"
   | "done"
   | "error";
 
@@ -173,6 +177,113 @@ function mixToMono(audioBuffer: AudioBuffer): Float32Array {
   return mono;
 }
 
+const WHISPER_SAMPLE_RATE = 16_000;
+const STREAM_WINDOW_SECONDS = 6;
+const MIN_STREAM_FLUSH_SECONDS = 0.5;
+
+function concatFloat32(chunks: Float32Array[]): Float32Array {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const combined = new Float32Array(totalLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return combined;
+}
+
+function resampleLinear(
+  input: Float32Array,
+  inputSampleRate: number,
+  outputSampleRate = WHISPER_SAMPLE_RATE
+): Float32Array {
+  if (inputSampleRate === outputSampleRate || input.length === 0) {
+    return input;
+  }
+
+  const outputLength = Math.max(
+    1,
+    Math.round((input.length * outputSampleRate) / inputSampleRate)
+  );
+  const output = new Float32Array(outputLength);
+  const ratio = inputSampleRate / outputSampleRate;
+
+  for (let i = 0; i < outputLength; i += 1) {
+    const sourcePosition = i * ratio;
+    const left = Math.floor(sourcePosition);
+    const right = Math.min(left + 1, input.length - 1);
+    const fraction = sourcePosition - left;
+    output[i] = input[left] * (1 - fraction) + input[right] * fraction;
+  }
+
+  return output;
+}
+
+function extractTranscriptText(result: unknown): string {
+  if (typeof result === "string") {
+    return result.trim();
+  }
+
+  if (
+    result &&
+    typeof result === "object" &&
+    "text" in result &&
+    typeof (result as { text?: unknown }).text === "string"
+  ) {
+    return (result as { text: string }).text.trim();
+  }
+
+  return "";
+}
+
+function buildAsrOptions(languageId: string, chunked: boolean) {
+  const selectedLanguage = TRANSCRIPTION_LANGUAGE_OPTIONS.find(
+    (option) => option.id === languageId
+  );
+
+  const options: {
+    task: "transcribe";
+    language?: string;
+    chunk_length_s?: number;
+    stride_length_s?: number;
+  } = {
+    task: "transcribe",
+  };
+
+  if (chunked) {
+    options.chunk_length_s = 20;
+    options.stride_length_s = 5;
+  }
+
+  if (selectedLanguage?.whisperLanguage) {
+    options.language = selectedLanguage.whisperLanguage;
+  }
+
+  return options;
+}
+
+type StreamCaptureNode = AudioWorkletNode | ScriptProcessorNode;
+
+type StreamWorkerMessage =
+  | { type: "model-ready"; requestId: number; modelId: string }
+  | { type: "model-error"; requestId: number; modelId: string; error: string }
+  | { type: "transcript"; sessionId: number; chunkId: number; text: string }
+  | { type: "chunk-error"; sessionId: number; chunkId: number; error: string };
+
+type ActiveStreamRuntime = {
+  context: AudioContext;
+  source: MediaStreamAudioSourceNode;
+  captureNode: StreamCaptureNode;
+  sink: GainNode;
+  stream: MediaStream;
+  ownsStream: boolean;
+  cancel: () => void;
+  stopCapture: () => void;
+  finish: () => Promise<void>;
+};
+
 export interface UseTranscriptionResult {
   status: TranscriptionStatus;
   error: string | null;
@@ -184,6 +295,12 @@ export interface UseTranscriptionResult {
   selectedLanguageId: string;
   setSelectedLanguageId: (languageId: string) => void;
   transcribeFile: (file: File) => Promise<void>;
+  isStreaming: boolean;
+  isStreamStarting: boolean;
+  audioLevel: number;
+  startStream: (stream: MediaStream) => Promise<void>;
+  startMicrophone: () => Promise<void>;
+  stopStream: () => void;
   reset: () => void;
 }
 
@@ -191,6 +308,9 @@ export function useTranscription(): UseTranscriptionResult {
   const [status, setStatus] = useState<TranscriptionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isStreamStarting, setIsStreamStarting] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
   const [selectedModelIdState, setSelectedModelIdState] = useState<string>(
     DEFAULT_WHISPER_MODEL_ID
   );
@@ -198,15 +318,23 @@ export function useTranscription(): UseTranscriptionResult {
     DEFAULT_TRANSCRIPTION_LANGUAGE_ID
   );
 
-  // Keep the pipeline instance between calls.
+  // File transcription stays on the main-thread pipeline. Live transcription
+  // uses a dedicated worker so heavy Whisper inference does not freeze the UI.
   const pipelineRef = useRef<any | null>(null);
   const loadedModelIdRef = useRef<string | null>(null);
+  const streamWorkerRef = useRef<Worker | null>(null);
+  const streamWorkerModelIdRef = useRef<string | null>(null);
+  const streamWorkerInitRef = useRef<{
+    modelId: string;
+    promise: Promise<Worker>;
+  } | null>(null);
+  const workerRequestIdRef = useRef(0);
+  const streamRuntimeRef = useRef<ActiveStreamRuntime | null>(null);
+  const streamSessionIdRef = useRef(0);
+  const streamControlQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const loadModel = useCallback(async (modelId: string) => {
-    if (
-      pipelineRef.current &&
-      loadedModelIdRef.current === modelId
-    ) {
+    if (pipelineRef.current && loadedModelIdRef.current === modelId) {
       setStatus("ready");
       return pipelineRef.current;
     }
@@ -215,16 +343,12 @@ export function useTranscription(): UseTranscriptionResult {
     setError(null);
 
     try {
-      // Browser-friendly configuration
       env.allowRemoteModels = true;
       if (env.backends?.onnx?.wasm) {
-        // Lighter WASM config for browsers
         env.backends.onnx.wasm.numThreads = 1;
       }
 
-      // Load a Whisper model.
       const asr = await pipeline("automatic-speech-recognition", modelId);
-
       pipelineRef.current = asr;
       loadedModelIdRef.current = modelId;
       setStatus("ready");
@@ -241,57 +365,135 @@ export function useTranscription(): UseTranscriptionResult {
     }
   }, []);
 
-  const setSelectedModelId = useCallback((modelId: string) => {
-    if (!WHISPER_MODEL_OPTIONS.some((option) => option.id === modelId)) {
-      return;
+  const getStreamWorker = useCallback(() => {
+    if (!streamWorkerRef.current) {
+      streamWorkerRef.current = new StreamTranscriptionWorker();
     }
-
-    setSelectedModelIdState(modelId);
-    setTranscript("");
-    setError(null);
-    setStatus("idle");
+    return streamWorkerRef.current;
   }, []);
 
-  const setSelectedLanguageId = useCallback((languageId: string) => {
-    if (!TRANSCRIPTION_LANGUAGE_OPTIONS.some((option) => option.id === languageId)) {
-      return;
-    }
+  const ensureStreamWorkerModel = useCallback(
+    (modelId: string): Promise<Worker> => {
+      const worker = getStreamWorker();
+      if (streamWorkerModelIdRef.current === modelId) {
+        return Promise.resolve(worker);
+      }
+      if (streamWorkerInitRef.current?.modelId === modelId) {
+        return streamWorkerInitRef.current.promise;
+      }
 
-    setSelectedLanguageIdState(languageId);
-    setTranscript("");
-    setError(null);
-    setStatus("idle");
+      const requestId = workerRequestIdRef.current + 1;
+      workerRequestIdRef.current = requestId;
+      const promise = new Promise<Worker>((resolve, reject) => {
+        const handleMessage = (event: MessageEvent<StreamWorkerMessage>) => {
+          const message = event.data;
+          if (
+            (message.type !== "model-ready" && message.type !== "model-error") ||
+            message.requestId !== requestId
+          ) {
+            return;
+          }
+
+          worker.removeEventListener("message", handleMessage);
+          if (message.type === "model-ready") {
+            streamWorkerModelIdRef.current = modelId;
+            resolve(worker);
+          } else {
+            reject(new Error(message.error));
+          }
+        };
+
+        worker.addEventListener("message", handleMessage);
+        worker.postMessage({ type: "init", requestId, modelId });
+      }).finally(() => {
+        if (streamWorkerInitRef.current?.modelId === modelId) {
+          streamWorkerInitRef.current = null;
+        }
+      });
+
+      streamWorkerInitRef.current = { modelId, promise };
+      return promise;
+    },
+    [getStreamWorker]
+  );
+
+  const enqueueStreamControl = useCallback((task: () => Promise<void>) => {
+    const run = async () => {
+      // Yield one turn so the click/paint can complete before finalization work.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      await task();
+    };
+    streamControlQueueRef.current = streamControlQueueRef.current
+      .then(run, run)
+      .catch((queueError) => {
+        console.error("Stream control queue failed", queueError);
+      });
   }, []);
+
+  const appendTranscript = useCallback((nextText: string) => {
+    const normalized = nextText.trim();
+    if (!normalized) return;
+    setTranscript((current) => {
+      const previous = current.trim();
+      return previous ? `${previous} ${normalized}` : normalized;
+    });
+  }, []);
+
+  const cancelActiveStream = useCallback(() => {
+    streamSessionIdRef.current += 1;
+    const runtime = streamRuntimeRef.current;
+    streamRuntimeRef.current = null;
+    runtime?.cancel();
+    setAudioLevel(0);
+    setIsStreamStarting(false);
+    setIsStreaming(false);
+  }, []);
+
+  const setSelectedModelId = useCallback(
+    (modelId: string) => {
+      if (!WHISPER_MODEL_OPTIONS.some((option) => option.id === modelId)) return;
+      cancelActiveStream();
+      setSelectedModelIdState(modelId);
+      setTranscript("");
+      setError(null);
+      setStatus("idle");
+    },
+    [cancelActiveStream]
+  );
+
+  const setSelectedLanguageId = useCallback(
+    (languageId: string) => {
+      if (!TRANSCRIPTION_LANGUAGE_OPTIONS.some((option) => option.id === languageId)) return;
+      cancelActiveStream();
+      setSelectedLanguageIdState(languageId);
+      setTranscript("");
+      setError(null);
+      setStatus("idle");
+    },
+    [cancelActiveStream]
+  );
 
   const transcribeFile = useCallback(
     async (file: File) => {
       if (!file) return;
-
+      cancelActiveStream();
       setError(null);
       setTranscript("");
 
       try {
         const asr = await loadModel(selectedModelIdState);
         setStatus("transcribing");
-
-        // --- Decode browser-supported audio/video -> mono Float32Array on the client ---
-        // 1) Read file as ArrayBuffer
         const arrayBuffer = await file.arrayBuffer();
-
-        // 2) Decode and (effectively) resample to 16 kHz
-        const audioContext = new AudioContext({ sampleRate: 16000 });
+        const audioContext = new AudioContext({ sampleRate: WHISPER_SAMPLE_RATE });
         let audioBuffer: AudioBuffer;
 
         try {
-          audioBuffer = await audioContext.decodeAudioData(
-            arrayBuffer.slice(0)
-          );
+          audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
         } catch (decodeError) {
           const isMkv =
             file.name.toLowerCase().endsWith(".mkv") ||
             file.type === "video/x-matroska" ||
             file.type === "video/matroska";
-
           if (isMkv) {
             throw new Error(
               "This browser could not decode the selected MKV file. " +
@@ -299,63 +501,411 @@ export function useTranscription(): UseTranscriptionResult {
                 "Please try Chrome/Edge, or convert/extract the audio to MP3, WAV, M4A, MP4, or WebM."
             );
           }
-
           throw decodeError;
+        } finally {
+          void audioContext.close();
         }
 
-        // 3) Mix all channels down to mono instead of fixing to channel 0
         const channelData = mixToMono(audioBuffer);
-
-        // 4) Run Whisper on the PCM data
-        const selectedLanguage = TRANSCRIPTION_LANGUAGE_OPTIONS.find(
-          (option) => option.id === selectedLanguageIdState
+        const result = await asr(
+          channelData,
+          buildAsrOptions(selectedLanguageIdState, true)
         );
-        const asrOptions: {
-          task: "transcribe";
-          chunk_length_s: number;
-          stride_length_s: number;
-          language?: string;
-        } = {
-          // Safer settings for reasonably long audio.
-          task: "transcribe",
-          chunk_length_s: 20,
-          stride_length_s: 5,
-        };
-
-        // Auto-detect is available, but English is the default because it is
-        // the safest common setting for many demo and interview recordings.
-        if (selectedLanguage?.whisperLanguage) {
-          asrOptions.language = selectedLanguage.whisperLanguage;
-        }
-
-        const result = await asr(channelData, asrOptions);
-
-        console.log(result);
-
-        let text = "";
-        if (typeof result === "string") {
-          text = result;
-        } else if (result && typeof result.text === "string") {
-          text = result.text;
-        }
-
-        setTranscript(text);
+        setTranscript(extractTranscriptText(result));
         setStatus("done");
       } catch (e) {
         console.error(e);
-        const message =
-          e instanceof Error ? e.message : "Failed to run transcription.";
-        setError(message);
+        setError(e instanceof Error ? e.message : "Failed to run transcription.");
         setStatus("error");
       }
     },
-    [loadModel, selectedLanguageIdState, selectedModelIdState]
+    [cancelActiveStream, loadModel, selectedLanguageIdState, selectedModelIdState]
   );
 
+  const startStreamInternal = useCallback(
+    async (stream: MediaStream, ownsStream: boolean) => {
+      if (!stream || stream.getAudioTracks().length === 0) {
+        setError("The supplied MediaStream does not contain an audio track.");
+        setStatus("error");
+        if (ownsStream) stream?.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      cancelActiveStream();
+      const sessionId = streamSessionIdRef.current + 1;
+      streamSessionIdRef.current = sessionId;
+      setIsStreamStarting(true);
+      setAudioLevel(0);
+      setError(null);
+      setTranscript("");
+      setStatus("starting-stream");
+
+      try {
+        const worker = await ensureStreamWorkerModel(selectedModelIdState);
+        if (sessionId !== streamSessionIdRef.current) {
+          if (ownsStream) stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        const context = new AudioContext({ sampleRate: WHISPER_SAMPLE_RATE });
+        const source = context.createMediaStreamSource(stream);
+        const sink = context.createGain();
+        sink.gain.value = 0;
+
+        let captureNode: StreamCaptureNode;
+        let detachCaptureHandler: () => void;
+        let capturedChunks: Float32Array[] = [];
+        let capturedSampleCount = 0;
+        let stopRequested = false;
+        let cancelled = false;
+        let streamFailed = false;
+        let pendingChunks = 0;
+        let chunkId = 0;
+        let finishPromise: Promise<void> | null = null;
+        let resolveFinish: (() => void) | null = null;
+        let lastLevelUpdate = 0;
+        let smoothedLevel = 0;
+
+        const selectedLanguage = TRANSCRIPTION_LANGUAGE_OPTIONS.find(
+          (option) => option.id === selectedLanguageIdState
+        );
+        const streamWindowSamples = Math.max(
+          1,
+          Math.round(context.sampleRate * STREAM_WINDOW_SECONDS)
+        );
+        const minFlushSamples = Math.max(
+          1,
+          Math.round(context.sampleRate * MIN_STREAM_FLUSH_SECONDS)
+        );
+
+        let graphCleaned = false;
+        const cleanupGraph = () => {
+          if (graphCleaned) return;
+          graphCleaned = true;
+          detachCaptureHandler();
+          try { source.disconnect(); } catch { /* already disconnected */ }
+          try { captureNode.disconnect(); } catch { /* already disconnected */ }
+          try { sink.disconnect(); } catch { /* already disconnected */ }
+          void context.close();
+          if (ownsStream) stream.getTracks().forEach((track) => track.stop());
+        };
+
+        const finishIfDrained = () => {
+          if (!stopRequested || pendingChunks > 0) return;
+          resolveFinish?.();
+          resolveFinish = null;
+          if (!cancelled && !streamFailed && sessionId === streamSessionIdRef.current) {
+            setStatus("done");
+          }
+        };
+
+        const handleWorkerMessage = (event: MessageEvent<StreamWorkerMessage>) => {
+          const message = event.data;
+          if (
+            (message.type !== "transcript" && message.type !== "chunk-error") ||
+            message.sessionId !== sessionId
+          ) {
+            return;
+          }
+
+          pendingChunks = Math.max(0, pendingChunks - 1);
+          if (message.type === "transcript") {
+            appendTranscript(message.text);
+          } else {
+            streamFailed = true;
+            stopRequested = true;
+            cleanupGraph();
+            setAudioLevel(0);
+            setIsStreaming(false);
+            setError(message.error);
+            setStatus("error");
+          }
+          finishIfDrained();
+        };
+        worker.addEventListener("message", handleWorkerMessage);
+
+        const postPcm = (nativePcm: Float32Array) => {
+          const pcm = resampleLinear(
+            nativePcm,
+            context.sampleRate,
+            WHISPER_SAMPLE_RATE
+          );
+          const nextChunkId = chunkId + 1;
+          chunkId = nextChunkId;
+          pendingChunks += 1;
+          worker.postMessage(
+            {
+              type: "transcribe",
+              sessionId,
+              chunkId: nextChunkId,
+              pcm: pcm.buffer,
+              language: selectedLanguage?.whisperLanguage,
+            },
+            [pcm.buffer]
+          );
+        };
+
+        const flushCapturedAudio = (force: boolean) => {
+          if (
+            capturedSampleCount < streamWindowSamples &&
+            !(force && capturedSampleCount >= minFlushSamples)
+          ) return;
+
+          const nativePcm = concatFloat32(capturedChunks);
+          capturedChunks = [];
+          capturedSampleCount = 0;
+          postPcm(nativePcm);
+        };
+
+        const updateAudioLevel = (pcm: Float32Array) => {
+          const now = performance.now();
+          if (now - lastLevelUpdate < 50) return;
+          lastLevelUpdate = now;
+          let sumSquares = 0;
+          for (let i = 0; i < pcm.length; i += 1) {
+            sumSquares += pcm[i] * pcm[i];
+          }
+          const rms = Math.sqrt(sumSquares / Math.max(1, pcm.length));
+          const db = 20 * Math.log10(Math.max(rms, 1e-6));
+          const normalized = Math.max(0, Math.min(1, (db + 60) / 60));
+          smoothedLevel = smoothedLevel * 0.65 + normalized * 0.35;
+          setAudioLevel(smoothedLevel);
+        };
+
+        const handlePcm = (pcm: Float32Array) => {
+          if (cancelled || stopRequested || pcm.length === 0) return;
+          updateAudioLevel(pcm);
+          capturedChunks.push(pcm);
+          capturedSampleCount += pcm.length;
+          flushCapturedAudio(false);
+        };
+
+        if (context.audioWorklet && typeof AudioWorkletNode !== "undefined") {
+          const processorSource = `
+class WhisperPcmCaptureProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (input && input.length > 0 && input[0]) {
+      const frameLength = input[0].length;
+      const mono = new Float32Array(frameLength);
+      for (let channel = 0; channel < input.length; channel += 1) {
+        const data = input[channel];
+        if (!data) continue;
+        for (let i = 0; i < frameLength; i += 1) mono[i] += data[i] / input.length;
+      }
+      this.port.postMessage(mono, [mono.buffer]);
+    }
+    return true;
+  }
+}
+registerProcessor("whisper-pcm-capture", WhisperPcmCaptureProcessor);
+`;
+          const moduleUrl = URL.createObjectURL(
+            new Blob([processorSource], { type: "application/javascript" })
+          );
+          try {
+            await context.audioWorklet.addModule(moduleUrl);
+          } finally {
+            URL.revokeObjectURL(moduleUrl);
+          }
+
+          const workletNode = new AudioWorkletNode(context, "whisper-pcm-capture");
+          workletNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
+            handlePcm(new Float32Array(event.data));
+          };
+          captureNode = workletNode;
+          detachCaptureHandler = () => { workletNode.port.onmessage = null; };
+        } else {
+          const scriptNode = context.createScriptProcessor(4096, 1, 1);
+          scriptNode.onaudioprocess = (event) => {
+            handlePcm(new Float32Array(event.inputBuffer.getChannelData(0)));
+          };
+          captureNode = scriptNode;
+          detachCaptureHandler = () => { scriptNode.onaudioprocess = null; };
+        }
+
+        source.connect(captureNode);
+        captureNode.connect(sink);
+        sink.connect(context.destination);
+        await context.resume();
+
+        if (sessionId !== streamSessionIdRef.current) {
+          cleanupGraph();
+          worker.removeEventListener("message", handleWorkerMessage);
+          return;
+        }
+
+        const runtime: ActiveStreamRuntime = {
+          context,
+          source,
+          captureNode,
+          sink,
+          stream,
+          ownsStream,
+          cancel: () => {
+            if (cancelled) return;
+            cancelled = true;
+            stopRequested = true;
+            capturedChunks = [];
+            capturedSampleCount = 0;
+            cleanupGraph();
+            setAudioLevel(0);
+            worker.postMessage({ type: "cancel-session", sessionId });
+            worker.removeEventListener("message", handleWorkerMessage);
+            resolveFinish?.();
+            resolveFinish = null;
+          },
+          stopCapture: () => {
+            if (cancelled || stopRequested) return;
+            stopRequested = true;
+            cleanupGraph();
+            setAudioLevel(0);
+            flushCapturedAudio(true);
+            finishIfDrained();
+          },
+          finish: async () => {
+            if (pendingChunks > 0) {
+              if (!finishPromise) {
+                finishPromise = new Promise<void>((resolve) => {
+                  resolveFinish = resolve;
+                });
+              }
+              await finishPromise;
+            }
+            worker.removeEventListener("message", handleWorkerMessage);
+          },
+        };
+
+        streamRuntimeRef.current = runtime;
+        setIsStreamStarting(false);
+        setIsStreaming(true);
+        setStatus("streaming");
+      } catch (e) {
+        console.error(e);
+        if (ownsStream) stream.getTracks().forEach((track) => track.stop());
+        if (sessionId !== streamSessionIdRef.current) return;
+        setError(e instanceof Error ? e.message : "Failed to start live audio transcription.");
+        setAudioLevel(0);
+        setIsStreamStarting(false);
+        setIsStreaming(false);
+        setStatus("error");
+      }
+    },
+    [
+      appendTranscript,
+      cancelActiveStream,
+      ensureStreamWorkerModel,
+      selectedLanguageIdState,
+      selectedModelIdState,
+    ]
+  );
+
+  const startStream = useCallback(
+    async (stream: MediaStream) => {
+      await startStreamInternal(stream, false);
+    },
+    [startStreamInternal]
+  );
+
+  const startMicrophone = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Microphone capture is not supported by this browser.");
+      setStatus("error");
+      return;
+    }
+
+    cancelActiveStream();
+    const requestId = streamSessionIdRef.current + 1;
+    streamSessionIdRef.current = requestId;
+    setIsStreamStarting(true);
+    setAudioLevel(0);
+    setError(null);
+    setStatus("starting-stream");
+
+    try {
+      // Heavy model initialization runs in a Worker, so Stop remains clickable.
+      await ensureStreamWorkerModel(selectedModelIdState);
+      if (requestId !== streamSessionIdRef.current) return;
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
+
+      if (requestId !== streamSessionIdRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      setIsStreamStarting(false);
+      await startStreamInternal(stream, true);
+    } catch (e) {
+      if (requestId !== streamSessionIdRef.current) return;
+      console.error(e);
+      setError(
+        e instanceof Error ? e.message : "Microphone permission was denied or unavailable."
+      );
+      setAudioLevel(0);
+      setIsStreamStarting(false);
+      setStatus("error");
+      setIsStreaming(false);
+    }
+  }, [
+    cancelActiveStream,
+    ensureStreamWorkerModel,
+    selectedModelIdState,
+    startStreamInternal,
+  ]);
+
+  const stopStream = useCallback(() => {
+    const runtime = streamRuntimeRef.current;
+
+    if (!runtime) {
+      // Cancels an in-flight worker model load / permission request immediately.
+      streamSessionIdRef.current += 1;
+      setAudioLevel(0);
+      setIsStreamStarting(false);
+      setIsStreaming(false);
+      setStatus(streamWorkerModelIdRef.current ? "ready" : "idle");
+      return;
+    }
+
+    // Immediate phase: stop the microphone and update UI before any final ASR wait.
+    streamRuntimeRef.current = null;
+    setAudioLevel(0);
+    setIsStreamStarting(false);
+    setIsStreaming(false);
+    setStatus("finalizing-stream");
+    runtime.stopCapture();
+
+    // Deferred phase: wait for worker-transcribed buffered chunks without blocking UI.
+    enqueueStreamControl(async () => {
+      await runtime.finish();
+    });
+  }, [enqueueStreamControl]);
+
   const reset = useCallback(() => {
+    cancelActiveStream();
     setTranscript("");
     setError(null);
+    setAudioLevel(0);
     setStatus("idle");
+  }, [cancelActiveStream]);
+
+  useEffect(() => {
+    return () => {
+      streamSessionIdRef.current += 1;
+      const runtime = streamRuntimeRef.current;
+      streamRuntimeRef.current = null;
+      runtime?.cancel();
+      streamWorkerRef.current?.terminate();
+      streamWorkerRef.current = null;
+    };
   }, []);
 
   return {
@@ -369,6 +919,12 @@ export function useTranscription(): UseTranscriptionResult {
     selectedLanguageId: selectedLanguageIdState,
     setSelectedLanguageId,
     transcribeFile,
+    isStreaming,
+    isStreamStarting,
+    audioLevel,
+    startStream,
+    startMicrophone,
+    stopStream,
     reset,
   };
 }

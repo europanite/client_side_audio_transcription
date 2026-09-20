@@ -13,6 +13,11 @@ const HomeScreen = () => {
     selectedLanguageId,
     setSelectedLanguageId,
     transcribeFile,
+    isStreaming,
+    isStreamStarting,
+    audioLevel,
+    startMicrophone,
+    stopStream,
     reset,
   } = useTranscription();
   const [selectedFileName, setSelectedFileName] = useState<string>("");
@@ -48,6 +53,22 @@ const HomeScreen = () => {
     fileInputRef.current?.click();
   };
 
+  const handleStartMicrophoneClick = () => {
+    setSelectedFileName("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    // Fire-and-forget: the next render can enable Stop immediately while the
+    // worker loads Whisper and microphone permission is requested.
+    void startMicrophone();
+  };
+
+  const handleStopMicrophoneClick = () => {
+    // stopStream performs the immediate capture stop synchronously and queues
+    // buffered-audio finalization separately.
+    stopStream();
+  };
+
   const handleClearClick = () => {
     reset();
     setSelectedFileName("");
@@ -56,20 +77,35 @@ const HomeScreen = () => {
     }
   };
 
-  const isBusy = status === "loading-model" || status === "transcribing";
+  const isBusy =
+    status === "loading-model" ||
+    status === "starting-stream" ||
+    status === "transcribing" ||
+    status === "streaming" ||
+    status === "finalizing-stream";
+
+  const canStopMicrophone = isStreamStarting || isStreaming;
 
   const statusLabel = (() => {
     switch (status) {
       case "idle":
-        return "Idle - choose a model and an audio file.";
+        return "Idle - choose a model, then select a media file or start the microphone.";
       case "loading-model":
         return `Loading ${selectedModel.label} Whisper into this browser (first load can be slow)...`;
       case "ready":
         return `${selectedModel.label} model loaded. Ready to transcribe.`;
+      case "starting-stream":
+        return "Waiting for microphone permission and preparing live capture...";
       case "transcribing":
         return selectedLanguageId === "auto"
-          ? "Transcribing audio locally in your browser with automatic language detection..."
-          : `Transcribing audio locally in your browser as ${selectedLanguage.label}...`;
+          ? "Transcribing buffered audio locally with automatic language detection..."
+          : `Transcribing buffered audio locally as ${selectedLanguage.label}...`;
+      case "streaming":
+        return selectedLanguageId === "auto"
+          ? "Listening to the live audio stream and transcribing locally..."
+          : `Listening to the live audio stream and transcribing locally as ${selectedLanguage.label}...`;
+      case "finalizing-stream":
+        return "Microphone stopped. Finishing transcription of buffered audio...";
       case "done":
         return "Transcription finished.";
       case "error":
@@ -83,10 +119,11 @@ const HomeScreen = () => {
     <main className="home">
       {/* Step 1 */}
       <section className="section">
-        <h2 className="section-title">Step 1 - Choose a model and media file</h2>
+        <h2 className="section-title">Step 1 - Choose a model and input</h2>
         <p className="section-description">
-          Pick a multilingual Whisper model, then select your audio or video file.
-          Whisper will automatically detect speech from supported media such as MP3, MP4, WebM, or browser-decodable MKV in your browser.
+          Pick a multilingual Whisper model, then select an audio/video file or
+          start live microphone transcription. File and microphone audio are
+          processed locally in your browser.
         </p>
 
         <div className="field-group">
@@ -143,6 +180,54 @@ const HomeScreen = () => {
           </span>
         </div>
 
+        <div className="button-row">
+          <button
+            type="button"
+            className="btn primary"
+            onClick={handleStartMicrophoneClick}
+            disabled={isBusy}
+          >
+            Start microphone
+          </button>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={handleStopMicrophoneClick}
+            disabled={!canStopMicrophone}
+          >
+            Stop microphone
+          </button>
+          <span className="file-name">
+            {isStreaming
+              ? "Live microphone input is active."
+              : isStreamStarting
+              ? "Preparing microphone input. You can stop now."
+              : status === "finalizing-stream"
+              ? "Microphone is stopped. Finalizing buffered audio in the worker."
+              : "Microphone is stopped."}
+          </span>
+        </div>
+
+        <div className="audio-level-row" aria-live="off">
+          <span className="audio-level-label">Mic level</span>
+          <div
+            className="audio-level-meter"
+            role="meter"
+            aria-label="Microphone input level"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(audioLevel * 100)}
+          >
+            <div
+              className="audio-level-fill"
+              style={{ width: `${Math.round(audioLevel * 100)}%` }}
+            />
+          </div>
+          <span className="audio-level-value">
+            {isStreaming ? `${Math.round(audioLevel * 100)}%` : "--"}
+          </span>
+        </div>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -156,7 +241,11 @@ const HomeScreen = () => {
       <section className="section">
         <h2 className="section-title">Step 2 - Model status</h2>
         <div className="status-row">
-          {(status === "loading-model" || status === "transcribing") && (
+          {(status === "loading-model" ||
+            status === "starting-stream" ||
+            status === "transcribing" ||
+            status === "streaming" ||
+            status === "finalizing-stream") && (
             <span className="spinner" aria-hidden="true" />
           )}
           <span className="status-text">{statusLabel}</span>
@@ -168,7 +257,8 @@ const HomeScreen = () => {
       <section className="section">
         <h2 className="section-title">Step 3 - Transcription</h2>
         <p className="section-description">
-          The recognized text will appear below.
+          The recognized text will appear below. Live input is appended every few
+          seconds as Whisper finishes each buffered window.
         </p>
 
         <textarea
@@ -177,7 +267,9 @@ const HomeScreen = () => {
           readOnly
           placeholder={
             status === "idle"
-              ? "The transcript will appear here after you select a media file."
+              ? "The transcript will appear here after you select a media file or start the microphone."
+              : status === "streaming"
+              ? "Listening for speech..."
               : transcript
               ? ""
               : "Transcription result is empty."
@@ -189,7 +281,13 @@ const HomeScreen = () => {
             type="button"
             className="btn secondary"
             onClick={handleClearClick}
-            disabled={!transcript && !error && !selectedFileName}
+            disabled={
+              !transcript &&
+              !error &&
+              !selectedFileName &&
+              !isStreaming &&
+              !isStreamStarting
+            }
           >
             Clear
           </button>
@@ -197,7 +295,9 @@ const HomeScreen = () => {
 
         <p className="footer-note">
           Note: The selected Whisper model runs entirely in your browser using
-          Transformers.js. Larger models may take more time and memory.
+          Transformers.js. Live audio is buffered into short PCM windows before
+          inference, so the transcript has a small delay rather than true
+          token-by-token streaming.
         </p>
       </section>
     </main>

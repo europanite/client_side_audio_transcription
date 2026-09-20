@@ -1,4 +1,4 @@
-# [क्लाइंट-साइड ऑडियो ट्रांसक्रिप्शन](https://github.com/europanite/client_side_audio_transcription "Client-Side Audio Transcription")
+# [Client-Side Audio Transcription](https://github.com/europanite/client_side_audio_transcription "Client-Side Audio Transcription")
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![OS](https://img.shields.io/badge/OS-Linux%20%7C%20macOS%20%7C%20Windows-blue)
@@ -9,7 +9,6 @@
 ![React](https://img.shields.io/badge/react-%2320232a.svg?logo=react&logoColor=%2361DAFB)
 ![Jest](https://img.shields.io/badge/-jest-%23C21325?logo=jest&logoColor=white)
 ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?logo=vite&logoColor=white)
-
 
 <p align="right">
   <a href="./README.md">🇺🇸 English</a> |
@@ -23,53 +22,51 @@
   <a href="./README.fr.md">🇫🇷 Français</a>
 </p>
 
-
 !["web_ui"](./assets/images/web_ui.png)
 
  [PlayGround](https://europanite.github.io/client_side_audio_transcription/)
 
-
 Whisper और Transformers.js द्वारा संचालित, ब्राउज़र-आधारित AI ट्रांसक्रिप्शन प्लेग्राउंड।
-किसी इंस्टॉलेशन, रजिस्ट्रेशन या भुगतान की आवश्यकता नहीं है।
+किसी इंस्टॉलेशन, पंजीकरण या भुगतान की आवश्यकता नहीं है।
 
 ---
 
 ## 🚀 अवलोकन
 
-यह प्रोजेक्ट React, TypeScript और Vite से बना एक क्लाइंट-साइड ट्रांसक्रिप्शन वेब ऐप है।
-यह `@huggingface/transformers` के माध्यम से Whisper को सीधे ब्राउज़र में चलाता है, इसलिए मीडिया फ़ाइलें ट्रांसक्रिप्शन के लिए किसी बैकएंड पर अपलोड होने के बजाय स्थानीय रूप से प्रोसेस होती हैं।
+यह प्रोजेक्ट React, TypeScript और Vite से बनाया गया एक क्लाइंट-साइड ट्रांसक्रिप्शन वेब ऐप है।
+यह `@huggingface/transformers` के माध्यम से Whisper को सीधे ब्राउज़र में चलाता है, इसलिए ट्रांसक्रिप्शन के लिए मीडिया फ़ाइलों को बैकएंड पर अपलोड करने के बजाय स्थानीय रूप से प्रोसेस किया जाता है।
 
-मौजूदा कार्यान्वयन UI में Whisper मॉडल चुनने, स्थानीय मीडिया फ़ाइल चुनने, चयनित मॉडल को जरूरत पड़ने पर लोड करने और पहचाने गए टेक्स्ट को read-only transcript क्षेत्र में दिखाने का समर्थन करता है।
+वर्तमान इम्प्लीमेंटेशन UI में Whisper मॉडल चुनने, स्थानीय मीडिया फ़ाइल चुनने, चयनित मॉडल को आवश्यकता पड़ने पर लोड करने और पहचाने गए टेक्स्ट को केवल-पढ़ने योग्य ट्रांसक्रिप्ट क्षेत्र में दिखाने का समर्थन करता है।
 
 ## ✨ विशेषताएँ
 
 - **क्लाइंट-साइड speech-to-text**  
-  React ऐप ब्राउज़र में सीधे `@huggingface/transformers` की `automatic-speech-recognition` pipeline को कॉल करता है, इसलिए ट्रांसक्रिप्शन पूरी तरह क्लाइंट पर चलता है।
+  React ऐप `@huggingface/transformers` की `automatic-speech-recognition` पाइपलाइन को सीधे ब्राउज़र में कॉल करता है, इसलिए ट्रांसक्रिप्शन पूरी तरह क्लाइंट पर चलता है।
 
-- **सरल 3-चरण workflow**  
-  UI आपको इन चरणों से गुजारता है:
+- **सरल 3-चरणीय वर्कफ़्लो**  
+  UI आपको इन चरणों से मार्गदर्शन करता है:
   1. Whisper मॉडल लोड करना।
-  2. मॉडल status जांचना।
-  3. ऑडियो अपलोड करके ट्रांसक्रिप्शन चलाना, हर चरण के लिए स्पष्ट status messages के साथ।
+  2. मॉडल की स्थिति जाँचना।
+  3. ऑडियो अपलोड करना और ट्रांसक्रिप्शन चलाना, प्रत्येक चरण के लिए स्पष्ट स्थिति संदेशों के साथ।
 
-- `@huggingface/transformers` के साथ **in-browser transcription**
-- UI में **multilingual Whisper model selection**
-- समर्थित built-in model options:
+- `@huggingface/transformers` के साथ **ब्राउज़र में ट्रांसक्रिप्शन**
+- UI में **बहुभाषी Whisper मॉडल चयन**
+- समर्थित बिल्ट-इन मॉडल विकल्प:
   - `Xenova/whisper-tiny`
   - `Xenova/whisper-base`
   - `Xenova/whisper-small`
 
-- `AudioContext` के जरिए 16 kHz पर client-side audio decoding
-- inference से पहले stereo-to-mono mixing
-- लंबे media के लिए chunked transcription settings:
+- `AudioContext` के माध्यम से क्लाइंट-साइड ऑडियो डिकोडिंग को 16 kHz पर करना
+- इन्फ़रेंस से पहले स्टीरियो को मोनो में मिलाना
+- लंबे मीडिया के लिए chunked ट्रांसक्रिप्शन सेटिंग्स:
   - `chunk_length_s: 20`
   - `stride_length_s: 5`
 
-- File input स्वीकार करता है:
-  - `audio/*`
-  - `video/mp4`
-  - `video/webm`
-  - `video/ogg`
+- स्वीकार्य इनपुट:
+  - `stream`
+  - `mp4`
+  - `webm`
+  - `ogg`
   - `.mp4`
   - `.webm`
   - `.ogv`
@@ -77,49 +74,49 @@ Whisper और Transformers.js द्वारा संचालित, ब्�
 
 ---
 
-## 🧱 टेक stack
+## 🧱 टेक स्टैक
 
 - Frontend: React + TypeScript + Vite
 - ML runtime: `@huggingface/transformers`
 - Inference task: `automatic-speech-recognition`
-- Browser audio handling: Web Audio API (`AudioContext`)
-- Testing: Jest + Testing Library
-- Container tooling: Docker + Docker Compose
+- ब्राउज़र ऑडियो हैंडलिंग: Web Audio API (`AudioContext`)
+- टेस्टिंग: Jest + Testing Library
+- कंटेनर टूलिंग: Docker + Docker Compose
 
 ---
 
 
 ## यह कैसे काम करता है
 
-### 1. App layout
+### 1. ऐप लेआउट
 
-`App.tsx` app shell, title, subtitle, `SettingsBar`, और `HomeScreen` को render करता है।
+`App.tsx` ऐप shell, title, subtitle, `SettingsBar` और `HomeScreen` को render करता है।
 
-Settings bar अभी runtime summary दिखाता है:
+settings bar वर्तमान में runtime सारांश दिखाता है:
 
 - `Transformers.js + Whisper`
 
-### 2. Model और file selection
+### 2. मॉडल और फ़ाइल चयन
 
-`HomeScreen.tsx` 3-step UI देता है:
+`HomeScreen.tsx` 3-चरणीय UI प्रदान करता है:
 
-1. मॉडल और media file चुनें
-2. मॉडल status जांचें
-3. transcription result पढ़ें
+1. मॉडल और मीडिया फ़ाइल चुनें
+2. मॉडल की स्थिति जाँचें
+3. ट्रांसक्रिप्शन परिणाम पढ़ें
 
-Screen में शामिल है:
+स्क्रीन में शामिल हैं:
 
-- Whisper model dropdown
-- button से trigger होने वाला hidden file input
-- processing के दौरान status text और spinner
-- transcript textarea
+- Whisper मॉडल dropdown
+- एक hidden file input, जिसे button से trigger किया जाता है
+- प्रोसेसिंग के दौरान status text और spinner
+- एक transcript textarea
 - Clear button
 
-### 3. Transcription hook
+### 3. ट्रांसक्रिप्शन hook
 
-`useTranscription.ts` core implementation है।
+`useTranscription.ts` मुख्य इम्प्लीमेंटेशन है।
 
-यह expose करता है:
+यह निम्नलिखित उपलब्ध कराता है:
 
 - `status`
 - `error`
@@ -130,46 +127,46 @@ Screen में शामिल है:
 - `transcribeFile(file)`
 - `reset()`
 
-Behavior:
+व्यवहार:
 
-- चयनित Whisper model पहली बार उपयोग पर lazily load होता है
-- अगर वही model चयनित रहता है तो pipeline instance cache होकर reuse होता है
-- model loading से पहले browser-friendly ONNX WASM settings लागू होती हैं
-- चयनित file को `ArrayBuffer` के रूप में पढ़ा जाता है
-- Audio को `AudioContext({ sampleRate: 16000 })` से decode किया जाता है
-- Multi-channel audio को mono में mix down किया जाता है
-- `language` जानबूझकर unset रखा गया है, इसलिए Whisper automatic language detection के साथ चलता है
-- पहचाना गया text transcript state में लिखा जाता है
+- चयनित Whisper मॉडल पहली बार उपयोग पर lazy-load होता है
+- यदि वही मॉडल चयनित रहता है, तो pipeline instance cache होकर दोबारा उपयोग होता है
+- मॉडल लोड करने से पहले ब्राउज़र-अनुकूल ONNX WASM settings लागू की जाती हैं
+- चयनित फ़ाइल को `ArrayBuffer` के रूप में पढ़ा जाता है
+- ऑडियो को `AudioContext({ sampleRate: 16000 })` से decode किया जाता है
+- multi-channel ऑडियो को mono में mix down किया जाता है
+- Whisper automatic language detection के साथ चलता है क्योंकि `language` जानबूझकर unset छोड़ा गया है
+- पहचाना गया टेक्स्ट transcript state में लिखा जाता है
 
-### 4. Status messages
+### 4. स्थिति संदेश
 
-मौजूदा UI user-facing states दिखाता है, जैसे:
+वर्तमान UI उपयोगकर्ता को निम्न स्थितियाँ दिखाता है:
 
-- idle: model और file चुनें
-- loading: first model load धीमा हो सकता है
-- ready: model loaded और ready है
-- transcribing: local browser transcription चल रहा है
-- done: transcription finished
-- error: failure message status block के नीचे दिखता है
+- idle: मॉडल और फ़ाइल चुनें
+- loading: मॉडल का पहला load धीमा हो सकता है
+- ready: मॉडल लोड होकर तैयार है
+- transcribing: स्थानीय ब्राउज़र ट्रांसक्रिप्शन चल रहा है
+- done: ट्रांसक्रिप्शन पूरा हुआ
+- error: failure message status block के नीचे दिखाया जाता है
 
-## Supported media notes
+## समर्थित मीडिया संबंधी नोट्स
 
-UI text कहता है कि users audio या video files चुन सकते हैं और Whisper ब्राउज़र में MP3 या MP4 जैसे supported media से speech detect कर सकता है।
+UI टेक्स्ट बताता है कि उपयोगकर्ता ऑडियो या वीडियो फ़ाइलें चुन सकते हैं और Whisper ब्राउज़र में MP3 या MP4 जैसे समर्थित मीडिया से speech पहचान सकता है।
 
-हालांकि, वास्तविक implementation selected file को `AudioContext.decodeAudioData()` से decode करता है। व्यवहार में, सफल decoding browser codec support पर निर्भर करती है। इसका मतलब है कि supported behavior आखिरकार इस बात से सीमित होता है कि user का browser selected media file को decode कर सकता है या नहीं।
+हालाँकि, वास्तविक इम्प्लीमेंटेशन चयनित फ़ाइल को `AudioContext.decodeAudioData()` से decode करता है। व्यवहार में सफल decoding ब्राउज़र codec support पर निर्भर करती है। इसका अर्थ है कि समर्थित व्यवहार अंततः इस बात से सीमित है कि उपयोगकर्ता का ब्राउज़र चयनित मीडिया फ़ाइल को decode कर सकता है या नहीं।
 
 ---
 
-## 🚀 Getting Started
+## 🚀 शुरू करना
 
-## Local development
+## npm
 
-### Prerequisites
+### आवश्यकताएँ
 
-- Node.js 20+ recommended
+- Node.js 20+ अनुशंसित
 - npm
 
-### npm के साथ locally run करें
+### चलाएँ
 
 ```bash
 cd frontend/app
@@ -177,18 +174,9 @@ npm ci
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-### Docker Compose के साथ locally run करें
+इससे सेवा port `5173` पर शुरू होती है।
 
-```bash
-docker compose build
-docker compose up
-```
-
-यह frontend container शुरू करता है और Vite app को port `5173` पर serve करता है।
-
-## Testing
-
-### Tests locally run करें
+## टेस्ट
 
 ```bash
 cd frontend/app
@@ -196,24 +184,23 @@ npm ci
 npm test -- --ci --runInBand --coverage --verbose
 ```
 
-## docker compose development
+## docker compose
 
-### Prerequisites
+### आवश्यकताएँ
+
 - [Docker Compose](https://docs.docker.com/compose/)
 
-### सभी services build और start करें:
+### चलाएँ
 
 ```bash
-
-# Build the image
 docker compose build
-
-# Run the container
 docker compose up
-
 ```
 
-### Test:
+इससे सेवा port `5173` पर शुरू होती है।
+
+## टेस्ट
+
 ```bash
 docker compose \
 -f docker-compose.test.yml up \
@@ -221,15 +208,15 @@ docker compose \
 frontend_test
 ```
 
-## Notes and limitations
+## नोट्स और सीमाएँ
 
-- Model loading browser में होता है और first use पर समय ले सकता है
-- बड़े models अधिक memory इस्तेमाल करते हैं
-- Transcription speed browser और device पर निर्भर करती है
-- Media decoding support browser codec support पर निर्भर करता है
-- मौजूदा app में backend transcription service नहीं है; transcription client-side किया जाता है
+- मॉडल loading ब्राउज़र में होती है और पहली बार उपयोग पर समय ले सकती है
+- बड़े मॉडल अधिक memory उपयोग करते हैं
+- ट्रांसक्रिप्शन की गति ब्राउज़र और device पर निर्भर करती है
+- मीडिया decoding support ब्राउज़र codec support पर निर्भर करती है
+- वर्तमान ऐप में कोई backend transcription service नहीं है; ट्रांसक्रिप्शन client-side पर किया जाता है
 
 ---
 
-# License
+# लाइसेंस
 - Apache License 2.0
