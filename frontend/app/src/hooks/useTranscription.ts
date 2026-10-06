@@ -1,6 +1,6 @@
 // frontend/app/src/hooks/useTranscription.ts
 import { useCallback, useEffect, useRef, useState } from "react";
-import { env, pipeline } from "@huggingface/transformers";
+import { env, pipeline, WhisperTextStreamer } from "@huggingface/transformers";
 import { createStreamTranscriptionWorker } from "../workers/createStreamTranscriptionWorker";
 
 export type TranscriptionStatus =
@@ -25,6 +25,11 @@ export interface TranscriptionLanguageOption {
   label: string;
   description: string;
   whisperLanguage?: string;
+}
+
+export interface TranscriptionProgress {
+  percent: number | null;
+  label: string;
 }
 
 export const AUTO_TRANSCRIPTION_LANGUAGE_ID = "auto";
@@ -178,9 +183,24 @@ function mixToMono(audioBuffer: AudioBuffer): Float32Array {
 }
 
 const WHISPER_SAMPLE_RATE = 16_000;
+const FILE_CHUNK_LENGTH_SECONDS = 20;
+const FILE_STRIDE_LENGTH_SECONDS = 5;
 const STREAM_WINDOW_SECONDS = 6;
 const MIN_STREAM_FLUSH_SECONDS = 0.5;
 const STREAM_WORKER_INIT_TIMEOUT_MS = 300_000;
+
+function clampProgressPercent(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getFileChunkCount(sampleCount: number): number {
+  const chunkSamples = FILE_CHUNK_LENGTH_SECONDS * WHISPER_SAMPLE_RATE;
+  const strideSamples = FILE_STRIDE_LENGTH_SECONDS * WHISPER_SAMPLE_RATE;
+  const stepSamples = chunkSamples - strideSamples * 2;
+
+  if (sampleCount <= chunkSamples) return 1;
+  return Math.ceil((sampleCount - chunkSamples) / stepSamples) + 1;
+}
 
 function concatFloat32(chunks: Float32Array[]): Float32Array {
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -254,8 +274,8 @@ function buildAsrOptions(languageId: string, chunked: boolean) {
   };
 
   if (chunked) {
-    options.chunk_length_s = 20;
-    options.stride_length_s = 5;
+    options.chunk_length_s = FILE_CHUNK_LENGTH_SECONDS;
+    options.stride_length_s = FILE_STRIDE_LENGTH_SECONDS;
   }
 
   if (selectedLanguage?.whisperLanguage) {
@@ -289,6 +309,7 @@ export interface UseTranscriptionResult {
   status: TranscriptionStatus;
   error: string | null;
   transcript: string;
+  progress: TranscriptionProgress | null;
   availableModels: WhisperModelOption[];
   selectedModelId: string;
   setSelectedModelId: (modelId: string) => void;
@@ -309,6 +330,7 @@ export function useTranscription(): UseTranscriptionResult {
   const [status, setStatus] = useState<TranscriptionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>("");
+  const [progress, setProgress] = useState<TranscriptionProgress | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isStreamStarting, setIsStreamStarting] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
@@ -342,6 +364,10 @@ export function useTranscription(): UseTranscriptionResult {
 
     setStatus("loading-model");
     setError(null);
+    setProgress({
+      percent: null,
+      label: "Loading Whisper model...",
+    });
 
     try {
       env.allowRemoteModels = true;
@@ -351,10 +377,43 @@ export function useTranscription(): UseTranscriptionResult {
 
       const asr = await pipeline("automatic-speech-recognition", modelId, {
         dtype: "q8",
+        progress_callback: (info: unknown) => {
+          if (!info || typeof info !== "object") return;
+
+          const event = info as {
+            status?: string;
+            progress?: number;
+            file?: string;
+          };
+
+          if (
+            event.status === "progress_total" &&
+            typeof event.progress === "number"
+          ) {
+            const raw =
+              event.progress <= 1 ? event.progress * 100 : event.progress;
+            setProgress({
+              percent: clampProgressPercent(raw),
+              label: "Loading Whisper model...",
+            });
+            return;
+          }
+
+          if (event.status === "progress" && event.file) {
+            setProgress((current) => ({
+              percent: current?.percent ?? null,
+              label: `Loading model file: ${event.file}`,
+            }));
+          }
+        },
       });
       pipelineRef.current = asr;
       loadedModelIdRef.current = modelId;
       setStatus("ready");
+      setProgress({
+        percent: 100,
+        label: "Whisper model loaded.",
+      });
       return asr;
     } catch (e) {
       console.error(e);
@@ -363,6 +422,7 @@ export function useTranscription(): UseTranscriptionResult {
           ? e.message
           : "Failed to load Whisper model in this browser.";
       setError(message);
+      setProgress(null);
       setStatus("error");
       throw e;
     }
@@ -480,6 +540,7 @@ export function useTranscription(): UseTranscriptionResult {
     setAudioLevel(0);
     setIsStreamStarting(false);
     setIsStreaming(false);
+    setProgress(null);
   }, []);
 
   const setSelectedModelId = useCallback(
@@ -516,9 +577,19 @@ export function useTranscription(): UseTranscriptionResult {
       try {
         const asr = await loadModel(selectedModelIdState);
         setStatus("transcribing");
+        setProgress({
+          percent: null,
+          label: "Reading media file...",
+        });
+
         const arrayBuffer = await file.arrayBuffer();
         const audioContext = new AudioContext({ sampleRate: WHISPER_SAMPLE_RATE });
         let audioBuffer: AudioBuffer;
+
+        setProgress({
+          percent: null,
+          label: "Decoding audio...",
+        });
 
         try {
           audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
@@ -540,15 +611,43 @@ export function useTranscription(): UseTranscriptionResult {
         }
 
         const channelData = mixToMono(audioBuffer);
-        const result = await asr(
-          channelData,
-          buildAsrOptions(selectedLanguageIdState, true)
-        );
+        const totalChunks = getFileChunkCount(channelData.length);
+        let completedChunks = 0;
+
+        setProgress({
+          percent: 0,
+          label: `Transcribing chunk 0 of ${totalChunks}...`,
+        });
+
+        const streamer = new WhisperTextStreamer(asr.tokenizer, {
+          skip_prompt: true,
+          on_finalize: () => {
+            completedChunks = Math.min(totalChunks, completedChunks + 1);
+            const percent = Math.min(
+              99,
+              clampProgressPercent((completedChunks / totalChunks) * 100)
+            );
+            setProgress({
+              percent,
+              label: `Transcribing chunk ${completedChunks} of ${totalChunks}...`,
+            });
+          },
+        });
+
+        const result = await asr(channelData, {
+          ...buildAsrOptions(selectedLanguageIdState, true),
+          streamer,
+        });
         setTranscript(extractTranscriptText(result));
+        setProgress({
+          percent: 100,
+          label: "Transcription complete.",
+        });
         setStatus("done");
       } catch (e) {
         console.error(e);
         setError(e instanceof Error ? e.message : "Failed to run transcription.");
+        setProgress(null);
         setStatus("error");
       }
     },
@@ -928,6 +1027,7 @@ registerProcessor("whisper-pcm-capture", WhisperPcmCaptureProcessor);
     setTranscript("");
     setError(null);
     setAudioLevel(0);
+    setProgress(null);
     setStatus("idle");
   }, [cancelActiveStream]);
 
@@ -946,6 +1046,7 @@ registerProcessor("whisper-pcm-capture", WhisperPcmCaptureProcessor);
     status,
     error,
     transcript,
+    progress,
     availableModels: WHISPER_MODEL_OPTIONS,
     selectedModelId: selectedModelIdState,
     setSelectedModelId,
