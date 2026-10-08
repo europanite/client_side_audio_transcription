@@ -6,6 +6,7 @@ const HomeScreen = () => {
     status,
     error,
     transcript,
+    progress,
     availableModels,
     selectedModelId,
     setSelectedModelId,
@@ -114,6 +115,10 @@ const HomeScreen = () => {
         return "";
     }
   })();
+
+  const showProgress = isBusy || progress !== null;
+  const progressPercent = progress?.percent ?? null;
+  const progressLabel = progress?.label ?? statusLabel;
 
   return (
     <main className="home">
@@ -250,6 +255,42 @@ const HomeScreen = () => {
           )}
           <span className="status-text">{statusLabel}</span>
         </div>
+
+        {showProgress && (
+          <div className="progress-block">
+            <div className="progress-meta">
+              <span>{progressLabel}</span>
+              <span className="progress-value">
+                {progressPercent === null ? "Working..." : `${progressPercent}%`}
+              </span>
+            </div>
+            <div
+              className="progress-track"
+              role="progressbar"
+              aria-label="Transcription progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progressPercent ?? undefined}
+              aria-valuetext={
+                progressPercent === null
+                  ? progressLabel
+                  : `${progressLabel} ${progressPercent}%`
+              }
+            >
+              <div
+                className={`progress-fill ${
+                  progressPercent === null ? "indeterminate" : ""
+                }`}
+                style={
+                  progressPercent === null
+                    ? undefined
+                    : { width: `${progressPercent}%` }
+                }
+              />
+            </div>
+          </div>
+        )}
+
         {error && <p className="error-text">{error}</p>}
       </section>
 
