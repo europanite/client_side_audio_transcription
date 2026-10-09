@@ -1,0 +1,41 @@
+# Generate a 40-second product demo without changing the application's runtime.
+services:
+  video-frontend:
+    image: node:24-bookworm-slim
+    working_dir: /app
+    environment:
+      # Vite 7 rejects Docker's service-name Host header unless explicitly allowed.
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: video-frontend
+    volumes:
+      - ./frontend/app:/app
+      - video_frontend_node_modules:/app/node_modules
+    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
+    expose:
+      - '5173'
+
+  video:
+    build:
+      context: ./video
+    depends_on:
+      - video-frontend
+    working_dir: /video
+    init: true
+    environment:
+      APP_URL: http://video-frontend:5173/client_side_audio_transcription/
+      OUTPUT_DIR: /out
+      VIDEO_SECONDS: '40'
+      VIDEO_AVATAR_ENABLED: ${VIDEO_AVATAR_ENABLED:-0}
+      VIDEO_AVATAR_PATH: /video/avatars-data/avatar.vrm
+      VIDEO_MOTION_MODE: procedural
+      VIDEO_SITE_URL: https://europanite.github.io/client_side_audio_transcription/
+      VIDEO_VOICE: ${VIDEO_VOICE:-en_US-lessac-medium}
+      VIDEO_VOICE_DIR: /voices
+    volumes:
+      - ./video/output:/out
+      - ./video/avatar:/video/avatars-data:ro
+      - video_voice_cache:/voices
+    shm_size: 1gb
+
+volumes:
+  video_frontend_node_modules:
+  video_voice_cache:
