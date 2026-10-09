@@ -69,40 +69,40 @@
     {
       "id": "intro",
       "atSeconds": 1.801,
-      "doneSeconds": 1.835
+      "doneSeconds": 1.854
     },
     {
       "id": "model",
-      "atSeconds": 6.3,
-      "doneSeconds": 6.34
+      "atSeconds": 6.301,
+      "doneSeconds": 6.361
     },
     {
       "id": "language",
-      "atSeconds": 11.001,
-      "doneSeconds": 11.012
+      "atSeconds": 11,
+      "doneSeconds": 11.018
     },
     {
       "id": "microphone",
       "atSeconds": 16.501,
-      "doneSeconds": 16.517
+      "doneSeconds": 16.534
     },
     {
       "id": "upload",
-      "atSeconds": 22.002,
-      "doneSeconds": 22.04
+      "atSeconds": 22.001,
+      "doneSeconds": 22.054
     },
     {
       "id": "result",
       "atSeconds": 28.001,
-      "doneSeconds": 28.467
+      "doneSeconds": 28.366
     },
     {
       "id": "outro",
-      "atSeconds": 33.999,
-      "doneSeconds": 34.016
+      "atSeconds": 34.001,
+      "doneSeconds": 34.034
     }
   ],
-  "recordingLeadSeconds": 0.481,
+  "recordingLeadSeconds": 0.433,
   "avatarEnabled": false,
   "transcriptionMayStillBeLoading": true
 }

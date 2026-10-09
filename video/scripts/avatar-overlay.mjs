@@ -5,13 +5,14 @@ import { rm, rename } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { videoPaths } from './video-paths.mjs';
 import { execFile } from 'node:child_process';
+import { recordFixedFps } from './avatar-fixed-fps.mjs';
 import { randomUUID, createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { chromium } from 'playwright';
 import { envelopeFromNarration } from './avatar-audio.mjs';
 import { inspectVRM } from './verify-vrm.mjs';
 import { probeDuration } from './render-continuous.mjs';
-import { VIDEO_SECONDS } from './timeline.mjs';
+import { VIDEO_SECONDS, FRAME_RATE } from './timeline.mjs';
 import { avatarCompositeArgs, assertAvatarOutputDuration } from './avatar-composite.mjs';
 import { validateEmageMotion } from '../avatar/emage-motion.mjs';
 
@@ -57,7 +58,7 @@ export async function overlayTalkingAvatar(videoPath, narrationWav, outputDir, c
     if (emageMotion.audioSha256 !== actualHash) {
       throw new Error('EMAGE motion was generated for a different narration WAV. Re-run EMAGE inference and conversion.');
     }
-    console.log(`External EMAGE motion: ${emageMotion.bones.head.length} frames`);
+    console.log(`External EMAGE motion: ${emageMotion.frames} frames`);
   } else if (process.env.VIDEO_MOTION_MODE && process.env.VIDEO_MOTION_MODE !== 'procedural') {
     throw new Error(`Unknown VIDEO_MOTION_MODE: ${process.env.VIDEO_MOTION_MODE}`);
   }
@@ -82,14 +83,24 @@ export async function overlayTalkingAvatar(videoPath, narrationWav, outputDir, c
     if (!state.ready) throw new Error(`VRM load failed: ${state.error}`);
     await page.screenshot({path:debug});
     if (emageMotion) await page.evaluate(motion => window.__setEmageMotion(motion), emageMotion);
-    const downloadEvent = page.waitForEvent('download',{timeout:100000});
-    const recording = page.evaluate(({wave, duration, cues}) => window.__recordAvatar(wave, duration, cues), {wave:levels, duration: VIDEO_SECONDS, cues});
-    const download = await downloadEvent;
-    await recording;
-    await download.saveAs(raw);
+    const captureMode = process.env.VIDEO_AVATAR_CAPTURE_MODE || 'deterministic';
+    if (captureMode === 'deterministic') {
+      // Every output frame has a known time. SwiftShader CPU speed can no longer
+      // produce repeated frames followed by abrupt pose jumps.
+      await recordFixedFps({ page, raw, levels, cues, seconds: VIDEO_SECONDS, fps: FRAME_RATE });
+    } else if (captureMode === 'realtime') {
+      // Retain the previous recorder only for A/B diagnosis.
+      const downloadEvent = page.waitForEvent('download',{timeout:100000});
+      const recording = page.evaluate(({wave, duration, cues}) => window.__recordAvatar(wave, duration, cues), {wave:levels, duration: VIDEO_SECONDS, cues});
+      const download = await downloadEvent;
+      await recording;
+      await download.saveAs(raw);
+    } else {
+      throw new Error(`Unknown VIDEO_AVATAR_CAPTURE_MODE: ${captureMode}`);
+    }
     const duration = await probeDuration(raw);
     if (duration < VIDEO_SECONDS - 2 || duration > VIDEO_SECONDS + 3) throw new Error(`Unreasonable avatar recording length: ${duration}`);
-    console.log(`VRM rendered: ${basename(raw)} (${duration.toFixed(2)} s)`);
+    console.log(`VRM rendered (${captureMode}): ${basename(raw)} (${duration.toFixed(2)} s)`);
     try {
       await exec('ffmpeg',avatarCompositeArgs(videoPath,raw,narrationWav,stage),{maxBuffer:8*1024*1024});
     } catch (error) {
