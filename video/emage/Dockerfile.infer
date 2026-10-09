@@ -1,0 +1,32 @@
+# PantoMatrix's setup.sh targets Colab and includes training/rendering deps.
+# This isolated image installs only the dependencies needed for EMAGE inference.
+# PyTorch image includes torch 2.0.0 and CUDA 11.7, and can run on CPU without
+# granting a GPU device to the container.
+FROM pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git ca-certificates libsndfile1 ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --no-cache-dir \
+      'numpy==1.23.5' \
+      'transformers==4.30.2' \
+      'omegaconf==2.3.0' \
+      'huggingface_hub==0.23.5' \
+      'librosa==0.10.2.post1' \
+      'soundfile==0.12.1'
+
+ARG PANTOMATRIX_REF=main
+RUN git init /opt/PantoMatrix && \
+    git -C /opt/PantoMatrix remote add origin https://github.com/PantoMatrix/PantoMatrix.git && \
+    git -C /opt/PantoMatrix fetch --depth 1 origin "${PANTOMATRIX_REF}" && \
+    git -C /opt/PantoMatrix checkout --detach FETCH_HEAD
+
+COPY run_inference.py /opt/emage/run_inference.py
+RUN mkdir -p /opt/emage/cache && chmod 0777 /opt/emage/cache
+WORKDIR /opt/PantoMatrix
+ENTRYPOINT ["python", "/opt/emage/run_inference.py"]

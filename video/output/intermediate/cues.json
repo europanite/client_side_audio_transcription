@@ -1,0 +1,58 @@
+[
+  {
+    "at": 1.8,
+    "id": "intro",
+    "speech": "Transcribe audio and video in your browser.",
+    "caption": "Transcribe audio and video in your browser.",
+    "startSeconds": 1.8,
+    "slotSeconds": 4.35
+  },
+  {
+    "at": 6.3,
+    "id": "model",
+    "speech": "Pick a Whisper model for your device.",
+    "caption": "Pick a Whisper model for your device.",
+    "startSeconds": 6.3,
+    "slotSeconds": 4.55
+  },
+  {
+    "at": 11,
+    "id": "language",
+    "speech": "Choose a language, or auto-detect it.",
+    "caption": "Choose a language, or auto-detect it.",
+    "startSeconds": 11,
+    "slotSeconds": 5.35
+  },
+  {
+    "at": 16.5,
+    "id": "microphone",
+    "speech": "Transcribe live audio from your microphone.",
+    "caption": "Transcribe live audio from your microphone.",
+    "startSeconds": 16.5,
+    "slotSeconds": 5.35
+  },
+  {
+    "at": 22,
+    "id": "upload",
+    "speech": "Or upload a file to start.",
+    "caption": "Or upload a file to start.",
+    "startSeconds": 22,
+    "slotSeconds": 5.85
+  },
+  {
+    "at": 28,
+    "id": "result",
+    "speech": "Your transcript appears here. Your data stays on your device.",
+    "caption": "Your transcript appears here. Your data stays on your device.",
+    "startSeconds": 28,
+    "slotSeconds": 5.85
+  },
+  {
+    "at": 34,
+    "id": "outro",
+    "speech": "Free to use. Scan the QR code.",
+    "caption": "Free to use. Scan the QR code.",
+    "startSeconds": 34,
+    "slotSeconds": 5.85
+  }
+]
