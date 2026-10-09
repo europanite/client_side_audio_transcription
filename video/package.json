@@ -1,0 +1,14 @@
+{
+  "name": "audio-transcription-demo-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test scripts/*.test.mjs avatar/*.test.mjs"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.4.2",
+    "esbuild": "^0.25.10",
+    "playwright": "1.55.1",
+    "three": "^0.180.0"
+  }
+}

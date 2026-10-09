@@ -1,0 +1,108 @@
+{
+  "project": "client_side_audio_transcription",
+  "appURL": "http://video-frontend:5173/client_side_audio_transcription/",
+  "siteURL": "https://europanite.github.io/client_side_audio_transcription/",
+  "outputSeconds": 40,
+  "realBrowserUI": true,
+  "narration": {
+    "cues": [
+      {
+        "at": 1.8,
+        "id": "intro",
+        "speech": "Transcribe audio and video in your browser.",
+        "caption": "Transcribe audio and video in your browser.",
+        "startSeconds": 1.8,
+        "slotSeconds": 4.35
+      },
+      {
+        "at": 6.3,
+        "id": "model",
+        "speech": "Pick a Whisper model for your device.",
+        "caption": "Pick a Whisper model for your device.",
+        "startSeconds": 6.3,
+        "slotSeconds": 4.55
+      },
+      {
+        "at": 11,
+        "id": "language",
+        "speech": "Choose a language, or auto-detect it.",
+        "caption": "Choose a language, or auto-detect it.",
+        "startSeconds": 11,
+        "slotSeconds": 5.35
+      },
+      {
+        "at": 16.5,
+        "id": "microphone",
+        "speech": "Transcribe live audio from your microphone.",
+        "caption": "Transcribe live audio from your microphone.",
+        "startSeconds": 16.5,
+        "slotSeconds": 5.35
+      },
+      {
+        "at": 22,
+        "id": "upload",
+        "speech": "Or upload a file to start.",
+        "caption": "Or upload a file to start.",
+        "startSeconds": 22,
+        "slotSeconds": 5.85
+      },
+      {
+        "at": 28,
+        "id": "result",
+        "speech": "Your transcript appears here. Your data stays on your device.",
+        "caption": "Your transcript appears here. Your data stays on your device.",
+        "startSeconds": 28,
+        "slotSeconds": 5.85
+      },
+      {
+        "at": 34,
+        "id": "outro",
+        "speech": "Free to use. Scan the QR code.",
+        "caption": "Free to use. Scan the QR code.",
+        "startSeconds": 34,
+        "slotSeconds": 5.85
+      }
+    ],
+    "voice": "en_US-lessac-medium"
+  },
+  "actions": [
+    {
+      "id": "intro",
+      "atSeconds": 1.801,
+      "doneSeconds": 1.835
+    },
+    {
+      "id": "model",
+      "atSeconds": 6.3,
+      "doneSeconds": 6.34
+    },
+    {
+      "id": "language",
+      "atSeconds": 11.001,
+      "doneSeconds": 11.012
+    },
+    {
+      "id": "microphone",
+      "atSeconds": 16.501,
+      "doneSeconds": 16.517
+    },
+    {
+      "id": "upload",
+      "atSeconds": 22.002,
+      "doneSeconds": 22.04
+    },
+    {
+      "id": "result",
+      "atSeconds": 28.001,
+      "doneSeconds": 28.467
+    },
+    {
+      "id": "outro",
+      "atSeconds": 33.999,
+      "doneSeconds": 34.016
+    }
+  ],
+  "recordingLeadSeconds": 0.481,
+  "avatarEnabled": false,
+  "transcriptionMayStillBeLoading": true
+}

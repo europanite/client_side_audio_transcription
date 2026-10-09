@@ -1,0 +1,71 @@
+# Run AFTER the normal narrated demo; EMAGE uses its narration WAV.
+services:
+  # The ordinary video recorder runs as root, but infer/convert use LOCAL_UID.
+  # Prepare only the shared output directories, without recursively changing
+  # unrelated artifacts (narration.wav, videos, etc.).
+  emage-prepare:
+    image: busybox:1.36.1
+    user: '0:0'
+    environment:
+      TARGET_UID: '${LOCAL_UID:-1000}'
+      TARGET_GID: '${LOCAL_GID:-1000}'
+    volumes:
+      - ./video/output:/out
+    entrypoint: ['sh', '-ec']
+    command:
+      - |
+        mkdir -p /out/intermediate/emage
+        chown "$$TARGET_UID:$$TARGET_GID" /out /out/intermediate
+        chown -R "$$TARGET_UID:$$TARGET_GID" /out/intermediate/emage
+        echo "EMAGE output ready for UID=$$TARGET_UID GID=$$TARGET_GID"
+
+  emage-infer:
+    build:
+      context: ./video/emage
+      dockerfile: Dockerfile.infer
+      args:
+        PANTOMATRIX_REF: ${PANTOMATRIX_REF:-main}
+    user: '${LOCAL_UID:-1000}:${LOCAL_GID:-1000}'
+    depends_on:
+      emage-prepare:
+        condition: service_completed_successfully
+    environment:
+      HF_HOME: /opt/emage/cache
+      XDG_CACHE_HOME: /opt/emage/cache
+      PYTHONPATH: /opt/PantoMatrix
+      PYTHONUNBUFFERED: '1'
+    volumes:
+      - ./video/output:/out
+      - emage_hf_cache:/opt/emage/cache
+    shm_size: 2gb
+
+  emage-convert:
+    build:
+      context: ./video/emage
+      dockerfile: Dockerfile
+    user: '${LOCAL_UID:-1000}:${LOCAL_GID:-1000}'
+    depends_on:
+      emage-infer:
+        condition: service_completed_successfully
+    volumes:
+      - ./video/output:/out
+
+  emage-apply:
+    build:
+      context: ./video
+    depends_on:
+      emage-convert:
+        condition: service_completed_successfully
+    working_dir: /video
+    environment:
+      OUTPUT_DIR: /out
+      VIDEO_SECONDS: '40'
+      VIDEO_AVATAR_PATH: /video/avatars-data/avatar.vrm
+      VIDEO_MOTION_MODE: emage
+    volumes:
+      - ./video/output:/out
+      - ./video/avatar:/video/avatars-data:ro
+    shm_size: 1gb
+    command: ['node', 'scripts/apply-emage.mjs']
+volumes:
+  emage_hf_cache:

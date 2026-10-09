@@ -1,0 +1,8 @@
+# Environment config
+.env
+*.env
+*.wav
+*.mp4
+*.webm
+*.mp3
+*.vrm

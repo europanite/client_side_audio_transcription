@@ -1,0 +1,27 @@
+1
+00:00:01,800 --> 00:00:06,150
+Transcribe audio and video in your browser.
+
+2
+00:00:06,300 --> 00:00:10,850
+Pick a Whisper model for your device.
+
+3
+00:00:11,000 --> 00:00:16,350
+Choose a language, or auto-detect it.
+
+4
+00:00:16,500 --> 00:00:21,850
+Transcribe live audio from your microphone.
+
+5
+00:00:22,000 --> 00:00:27,850
+Or upload a file to start.
+
+6
+00:00:28,000 --> 00:00:33,850
+Your transcript appears here. Your data stays on your device.
+
+7
+00:00:34,000 --> 00:00:39,850
+Free to use. Scan the QR code.

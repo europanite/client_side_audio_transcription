@@ -24,9 +24,16 @@
 
 !["web_ui"](./assets/images/web_ui.png)
 
- [PlayGround](https://europanite.github.io/client_side_audio_transcription/)
+## 30-Second Demo
 
-A browser-based AI transcription playground powered by Whisper and Transformers.js.
+[![▶ Watch the 40-second demo](https://img.youtube.com/vi/IsV8WGXTPN4/hqdefault.jpg)](https://youtu.be/IsV8WGXTPN4)
+
+## PlayGround
+
+[▶ Open the app](https://europanite.github.io/client_side_audio_transcription/)
+
+Browser-based client-side audio transcription tool powered by Whisper and Transformers.js.
+This tool is completely free and safe because it runs only on your web browser.
 No installation, registration, or payment required.
 
 ---
