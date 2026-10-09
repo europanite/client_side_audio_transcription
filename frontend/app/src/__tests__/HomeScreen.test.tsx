@@ -15,6 +15,7 @@ const createBaseHookValue = (): MockUseTranscriptionReturn => ({
   status: "idle",
   error: null,
   transcript: "",
+  progress: null,
   availableModels: [
     {
       id: "Xenova/whisper-small",
@@ -229,6 +230,26 @@ describe("HomeScreen", () => {
 
     const meter = screen.getByRole("meter", { name: "Microphone input level" });
     expect(meter.getAttribute("aria-valuenow")).toBe("42");
+    expect(screen.queryByText("42%")).not.toBeNull();
+  });
+
+  it("shows determinate transcription progress", () => {
+    (useTranscription as jest.Mock).mockReturnValue({
+      ...createBaseHookValue(),
+      status: "transcribing",
+      progress: {
+        percent: 42,
+        label: "Transcribing chunk 3 of 7...",
+      },
+    });
+
+    render(<HomeScreen />);
+
+    const progressbar = screen.getByRole("progressbar", {
+      name: "Transcription progress",
+    });
+    expect(progressbar.getAttribute("aria-valuenow")).toBe("42");
+    expect(screen.queryByText("Transcribing chunk 3 of 7...")).not.toBeNull();
     expect(screen.queryByText("42%")).not.toBeNull();
   });
 
