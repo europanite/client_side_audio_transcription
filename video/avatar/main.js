@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin } from '@pixiv/three-vrm';
 import { sampleAvatarMotion, validateMotionCues } from './motion.mjs';
-import { sampleEmageMotion, validateEmageMotion } from './emage-motion.mjs';
+import { validateEmageMotion, unpackEmageMotion } from './emage-motion.mjs';
+import { createVrmRetargeter } from './smplx-retarget.mjs';
 
 const SIZE = { width: 480, height: 600 };
 const canvas = document.querySelector('#avatar');
@@ -23,7 +24,9 @@ let model = null;
 let samples = [];
 let motionCues = null;
 let emageMotion = null;
+let emageRetargeter = null;
 let recordingFrom = null;
+let deterministicCapture = false;
 let lastTick = performance.now();
 const loader = new GLTFLoader();
 loader.register((parser) => new VRMLoaderPlugin(parser));
@@ -39,40 +42,66 @@ function applyMotion(vrm, pose) {
   }
 }
 
-function animate(time) {
-  requestAnimationFrame(animate);
-  const delta = Math.min(0.1, Math.max(0, (time - lastTick) / 1000));
-  lastTick = time;
+function renderAt(elapsed, delta, playing) {
   if (model) {
-    const elapsed = recordingFrom === null ? time / 1000 : (time - recordingFrom) / 1000;
-    const voice = recordingFrom === null ? 0 : (samples[Math.min(samples.length - 1, Math.max(0, Math.floor(elapsed * 30)))] || 0);
+    const voice = !playing ? 0 : (samples[Math.min(samples.length - 1, Math.max(0, Math.floor(elapsed * 30)))] || 0);
     // Audio amplitude controls opening, with small variations for vowel shapes.
     const amount = clamp(voice * 1.3);
     model.expressionManager?.setValue('aa', clamp(amount * (0.76 + 0.1 * Math.sin(elapsed * 17))));
     model.expressionManager?.setValue('ih', clamp(amount * (0.12 + 0.12 * Math.sin(elapsed * 11 + 1))));
     model.expressionManager?.setValue('ou', clamp(amount * 0.12));
-    // Keep authored stage gestures when EMAGE is available; external motion enriches them.
+    // EMAGE mode is an independent retarget path, NOT additive Euler offsets.
+    // Procedural pose is retained for facial expression only (blink/smile).
     const pose = sampleAvatarMotion(elapsed, motionCues, voice);
-    if (emageMotion && recordingFrom !== null) {
-      for (const [name, offset] of Object.entries(sampleEmageMotion(emageMotion, elapsed))) {
-        const angles = pose.bones[name];
-        if (!angles) continue;
-        const gain = /Arm/.test(name) ? 0.95 : 0.75;
-        for (let axis = 0; axis < 3; axis++) angles[axis] += offset[axis] * gain;
-      }
-    }
     model.expressionManager?.setValue('blink', pose.blink);
     // VRM presets are model-dependent. Only set a smile when it exists.
     if (model.expressionManager?.getExpression?.('happy')) {
       model.expressionManager.setValue('happy', pose.smile);
     }
-    applyMotion(model, pose);
-    model.scene.rotation.y = pose.rootYaw;
+    if (emageRetargeter && playing) {
+      emageRetargeter.apply(elapsed);
+      model.scene.rotation.y = 0; // no authored root sway over SMPL-X
+    } else {
+      applyMotion(model, pose);
+      model.scene.rotation.y = pose.rootYaw;
+    }
     model.update(delta);
   }
   renderer.render(scene, camera);
 }
+function animate(time) {
+  requestAnimationFrame(animate);
+  // Do not race the deterministic renderer with wall-clock requestAnimationFrame.
+  if (deterministicCapture) return;
+  const delta = Math.min(0.1, Math.max(0, (time - lastTick) / 1000));
+  lastTick = time;
+  const playing = recordingFrom !== null;
+  renderAt(playing ? (time - recordingFrom) / 1000 : time / 1000, delta, playing);
+}
 requestAnimationFrame(animate);
+
+/** Render exactly the requested timestamp, independent of WebGL rendering speed. */
+window.__startDeterministicAvatar = (wave, cues, duration) => {
+  if (!window.__avatarState.ready) throw new Error('VRM not ready');
+  if (!Array.isArray(wave) || !wave.length) throw new Error('Audio envelope missing');
+  motionCues = validateMotionCues(cues, duration);
+  samples = wave;
+  deterministicCapture = true;
+};
+window.__renderAvatarFramePng = (seconds) => {
+  if (!deterministicCapture) throw new Error('Deterministic renderer not started');
+  if (!Number.isFinite(seconds) || seconds < 0) throw new Error('Invalid frame timestamp');
+  renderAt(seconds, 1 / 30, true);
+  // preserveDrawingBuffer:true makes this read the frame we JUST rendered,
+  // without requiring the browser compositor/MediaRecorder to catch up.
+  return canvas.toDataURL('image/png').split(',')[1];
+};
+window.__finishDeterministicAvatar = () => {
+  deterministicCapture = false;
+  samples = [];
+  motionCues = null;
+  lastTick = performance.now();
+};
 
 window.__avatarState = { ready: false, error: null };
 loader.load('/avatar.vrm', (gltf) => {
@@ -101,6 +130,8 @@ loader.load('/avatar.vrm', (gltf) => {
 /** Inject checked, per-frame motion from the separate EMAGE conversion stage. */
 window.__setEmageMotion = (motion) => {
   emageMotion = validateEmageMotion(motion, 40);
+  emageRetargeter = createVrmRetargeter(model, unpackEmageMotion(emageMotion));
+  window.__avatarState.mappedBones = emageRetargeter.mappedBones;
 };
 
 /** One real-time recording, 40 s, exactly aligned to the final narration WAV. */
@@ -128,6 +159,7 @@ window.__recordAvatar = async (levels, duration = 40, cues) => {
   recordingFrom = null;
   motionCues = null;
   emageMotion = null;
+  emageRetargeter = null;
   stream.getTracks().forEach(track => track.stop());
   const blob = new Blob(parts, { type: codec });
   if (blob.size < 10000) throw new Error(`Empty VRM recording (${blob.size} bytes)`);
