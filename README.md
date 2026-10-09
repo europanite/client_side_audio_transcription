@@ -22,7 +22,7 @@
   <a href="./README.fr.md">🇫🇷 Français</a>
 </p>
 
-## 30-Second Demo
+## Demo
 
 [![▶ Watch the 40-second demo](https://img.youtube.com/vi/IsV8WGXTPN4/hqdefault.jpg)](https://youtu.be/IsV8WGXTPN4)
 
